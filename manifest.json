@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "Motley Fool Symbol Marker",
+  "version": "1.0",
+  "description": "Display Motley Fool icon next to specified stock symbols",
+  "permissions": ["storage", "activeTab"],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Symbol Marker Configuration"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": [
+    "https://app.alpaca.markets/*",
+    "https://www.etoro.com/*",
+    "https://www.fool.com/*",
+    "https://invest.revolut.com/*",
+    "https://app.trading212.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://app.alpaca.markets/*",
+        "https://www.etoro.com/*",
+        "https://www.fool.com/*",
+        "https://invest.revolut.com/*",
+        "https://app.trading212.com/*",
+        "file:///*"
+      ],
+      "js": ["dist/content.js"],
+      "run_at": "document_end",
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["icon.png"],
+      "matches": [
+        "https://app.alpaca.markets/*",
+        "https://www.etoro.com/*",
+        "https://www.fool.com/*",
+        "https://invest.revolut.com/*",
+        "https://app.trading212.com/*",
+        "file:///*"
+      ]
+    }
+  ]
+}

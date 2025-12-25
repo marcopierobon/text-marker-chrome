@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Symbol Marker Configuration</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 Symbol Marker Configuration</h1>
+            <p class="subtitle">Configure symbol groups and categories</p>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="groups">Groups</button>
+            <button class="tab-btn" data-tab="url-filters">URL Filters</button>
+            <button class="tab-btn" data-tab="import-export">Import/Export</button>
+        </div>
+
+        <div class="tab-content active" id="groups-tab">
+            <div class="toolbar">
+                <button class="btn btn-primary" id="add-group-btn">
+                    <span class="icon">+</span> Add Group
+                </button>
+            </div>
+
+            <div id="groups-container" class="groups-container">
+                <!-- Groups will be dynamically added here -->
+            </div>
+        </div>
+
+        <div class="tab-content" id="url-filters-tab">
+            <div class="url-filters-section">
+                <h3>URL Filtering</h3>
+                <p class="help-text">Control where the extension is active. If whitelist is empty, extension runs everywhere except blacklisted URLs.</p>
+                
+                <div class="filter-mode">
+                    <label>
+                        <input type="radio" name="filter-mode" value="whitelist" checked>
+                        <strong>Whitelist Mode</strong> - Only run on these URLs
+                    </label>
+                    <label>
+                        <input type="radio" name="filter-mode" value="blacklist">
+                        <strong>Blacklist Mode</strong> - Run everywhere except these URLs
+                    </label>
+                </div>
+
+                <div class="url-pattern-helper">
+                    <h4>Quick Add Pattern</h4>
+                    <div class="pattern-buttons">
+                        <button class="btn btn-secondary btn-sm" id="add-current-domain">This Domain</button>
+                        <button class="btn btn-secondary btn-sm" id="add-domain-subdomains">Domain + Subdomains</button>
+                        <button class="btn btn-secondary btn-sm" id="add-exact-url">Exact URL</button>
+                    </div>
+                    <p class="help-text" id="pattern-preview"></p>
+                </div>
+
+                <div class="url-list-section">
+                    <h4>URL Patterns</h4>
+                    <div class="form-group">
+                        <label for="url-pattern-input">Add Pattern (supports wildcards * and regex /pattern/)</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="url-pattern-input" placeholder="e.g., *.etoro.com or /https:\/\/.*\.google\.com/" style="flex: 1;">
+                            <button class="btn btn-primary" id="add-pattern-btn">Add</button>
+                        </div>
+                        <small class="help-text">
+                            Examples: <code>etoro.com</code>, <code>*.google.com</code>, <code>/https:\/\/.*\.example\.com/</code>
+                        </small>
+                    </div>
+                    <div id="url-patterns-list" class="patterns-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="import-export-tab">
+            <div class="import-export-section">
+                <h3>Export Configuration</h3>
+                <p class="help-text">Download your current configuration as JSON</p>
+                <button class="btn btn-secondary" id="export-btn">
+                    <span class="icon">📥</span> Export Configuration
+                </button>
+
+                <h3 style="margin-top: 2rem;">Import Configuration</h3>
+                <p class="help-text">Upload a JSON configuration file</p>
+                <input type="file" id="import-file" accept=".json" style="display: none;">
+                <button class="btn btn-secondary" id="import-btn">
+                    <span class="icon">📤</span> Import Configuration
+                </button>
+
+                <h3 style="margin-top: 2rem;">Reset to Default</h3>
+                <p class="help-text">Restore the original configuration</p>
+                <button class="btn btn-danger" id="reset-btn">
+                    <span class="icon">🔄</span> Reset to Default
+                </button>
+            </div>
+        </div>
+
+        <footer>
+            <button class="btn btn-secondary" id="cancel-btn">Close</button>
+        </footer>
+    </div>
+
+    <!-- Modal for adding/editing groups -->
+    <div id="group-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Add Group</h2>
+                <button class="close-btn" id="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="group-name">Group Name</label>
+                    <input type="text" id="group-name" placeholder="e.g., MOTLEY_FOOL" required>
+                </div>
+                <div class="form-group">
+                    <label for="group-icon">Icon URL</label>
+                    <input type="url" id="group-icon" placeholder="https://example.com/icon.png" required>
+                    <small class="help-text">Recommended size: 16x16 pixels</small>
+                </div>
+                <div class="form-group">
+                    <label for="group-color">Badge Color</label>
+                    <input type="color" id="group-color" value="#c8102e">
+                </div>
+                <div class="form-group">
+                    <label for="group-url">Group URL (optional)</label>
+                    <input type="url" id="group-url" placeholder="https://example.com/group-page">
+                    <small class="help-text">Link to group's main page (shown at top of tooltip)</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="save-group-btn">Save Group</button>
+                <button class="btn btn-secondary" id="cancel-group-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for adding/editing categories -->
+    <div id="category-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="category-modal-title">Add Category</h2>
+                <button class="close-btn" id="close-category-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="category-name">Category Name</label>
+                    <input type="text" id="category-name" placeholder="e.g., STOCK ADVISOR" required>
+                </div>
+                <div class="form-group">
+                    <label for="category-symbols">Symbols (comma-separated)</label>
+                    <textarea id="category-symbols" rows="5" placeholder="AAPL, MSFT, GOOGL, AMZN"></textarea>
+                    <small class="help-text">Enter stock symbols separated by commas</small>
+                </div>
+                <div class="form-group">
+                    <label for="category-url">Category URL (optional)</label>
+                    <input type="url" id="category-url" placeholder="https://example.com/category-page">
+                    <small class="help-text">Link to this category's page (shown next to category name)</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="save-category-btn">Save Category</button>
+                <button class="btn btn-secondary" id="cancel-category-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
