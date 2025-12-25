@@ -31,7 +31,7 @@
         "https://app.trading212.com/*",
         "file:///*"
       ],
-      "js": ["dist/content.js"],
+      "js": ["content/content.js"],
       "run_at": "document_end",
       "all_frames": false
     }

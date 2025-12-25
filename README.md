@@ -5,6 +5,7 @@ This Chrome extension displays the Motley Fool icon with category labels next to
 ## Features
 
 The extension tracks symbols across 5 Motley Fool categories:
+
 - **STOCK ADVISOR** - Core stock recommendations
 - **MONEYBALL** - Data-driven picks
 - **FOUNDATIONAL** - Long-term foundation stocks
@@ -12,6 +13,7 @@ The extension tracks symbols across 5 Motley Fool categories:
 - **TOP QUANT** - Quantitative analysis picks
 
 Each symbol displays:
+
 - 16x16 Motley Fool icon
 - Single category: Shows label directly (e.g., "STOCK ADVISOR")
 - Multiple categories: Shows clickable "+N" button that expands to show all labels separated by "|"
@@ -27,10 +29,12 @@ Each symbol displays:
 ## Usage
 
 Once installed, visit:
+
 - https://app.alpaca.markets/
 - https://www.etoro.com/
 
 The extension automatically displays badges next to any tracked symbols. For example:
+
 - **Single category**: RACE → 🎯 **STOCK ADVISOR**
 - **Multiple categories**: NVDA → 🎯 **+3** (click to expand to "STOCK ADVISOR | MONEYBALL | TOP QUANT")
 - **Multiple categories**: TSLA → 🎯 **+4** (click to expand to "STOCK ADVISOR | FOUNDATIONAL | TOP ANALYST | TOP QUANT")
@@ -42,16 +46,19 @@ Click the "+N" button to toggle between compact and expanded view.
 Click the extension icon to open the configuration panel where you can:
 
 ### Manage Groups
+
 - **Add Group**: Create new symbol groups with custom icons and colors
 - **Edit Group**: Modify group name, icon URL, or badge color
 - **Delete Group**: Remove groups you no longer need
 
 ### Manage Categories
+
 - **Add Category**: Create new categories within a group
 - **Edit Category**: Modify category name or symbol list
 - **Delete Category**: Remove categories
 
 ### Import/Export
+
 - **Export**: Download your configuration as JSON
 - **Import**: Upload a previously saved configuration
 - **Reset**: Restore default configuration
@@ -67,6 +74,7 @@ These sites use Content Security Policy (CSP) which blocks Tampermonkey from inj
 The extension maintains two sets of symbol lists:
 
 ### FULL Lists
+
 - `FULL_FOOL_SYMBOL_LISTS` - Complete Motley Fool recommendations
 - `FULL_SIMPLYWALLST_LISTS` - Complete Simply Wall St picks
 - `FULL_ZACKS_LISTS` - Complete Zacks recommendations
@@ -74,6 +82,7 @@ The extension maintains two sets of symbol lists:
 These contain all symbols from each service but are **not used** by the extension.
 
 ### IN_USE Lists (Active)
+
 - `IN_USE_FOOL_SYMBOL_LISTS` - Filtered Motley Fool symbols
 - `IN_USE_SIMPLYWALLST_LISTS` - Filtered Simply Wall St symbols
 - `IN_USE_ZACKS_LISTS` - Filtered Zacks symbols
@@ -97,6 +106,7 @@ The extension uses the IN_USE lists to build the symbol-to-category lookup maps.
 ## Debugging
 
 Open Chrome DevTools (F12) and check the console for:
+
 - `🎯 Motley Fool Symbol Marker: Extension loaded!`
 - `Tracking X unique symbols across 5 categories`
 - `✓ Added badge for NVDA (STOCK ADVISOR, TOP QUANT) after <element>`

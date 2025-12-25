@@ -34,7 +34,7 @@
         // Expose test helpers
         window.testHelpers = {
             getSymbolCount: () => {
-                const badges = document.querySelectorAll('.fool-badge');
+                const badges = document.querySelectorAll('.symbol-badge');
                 const symbols = new Set();
                 badges.forEach(badge => {
                     const symbol = badge.getAttribute('data-symbol');
@@ -42,19 +42,19 @@
                 });
                 return symbols.size;
             },
-            getBadgeCount: () => document.querySelectorAll('.fool-badge').length,
+            getBadgeCount: () => document.querySelectorAll('.symbol-badge').length,
             getGroupCount: (symbol) => {
-                const badges = document.querySelectorAll(`.fool-badge[data-symbol="${symbol}"]`);
+                const badges = document.querySelectorAll(`.symbol-badge[data-symbol="${symbol}"]`);
                 if (badges.length === 0) return 0;
-                return badges[0].querySelectorAll('.fool-group').length;
+                return badges[0].querySelectorAll('.symbol-group').length;
             },
             hasTooltip: (symbol) => {
-                const badges = document.querySelectorAll(`.fool-badge[data-symbol="${symbol}"]`);
+                const badges = document.querySelectorAll(`.symbol-badge[data-symbol="${symbol}"]`);
                 if (badges.length === 0) return false;
                 return !!badges[0].querySelector('.symbol-tooltip');
             },
             getCategoryLinkCount: (symbol) => {
-                const badges = document.querySelectorAll(`.fool-badge[data-symbol="${symbol}"]`);
+                const badges = document.querySelectorAll(`.symbol-badge[data-symbol="${symbol}"]`);
                 if (badges.length === 0) return 0;
                 const tooltip = badges[0].querySelector('.symbol-tooltip');
                 if (!tooltip) return 0;
@@ -73,7 +73,7 @@
                 `;
             },
             clearBadges: () => {
-                document.querySelectorAll('.fool-badge').forEach(badge => badge.remove());
+                document.querySelectorAll('.symbol-badge').forEach(badge => badge.remove());
             }
         };
     </script>

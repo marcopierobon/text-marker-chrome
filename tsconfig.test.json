@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["jest", "node", "chrome"],
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "noImplicitAny": true,
+    "strict": true
+  },
+  "include": ["**/*.test.ts", "**/*.spec.ts", "__tests__/**/*.ts"],
+  "exclude": ["node_modules", "dist", ".stryker-tmp"]
+}
