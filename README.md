@@ -1,94 +1,664 @@
 # Text Marker - Chrome Extension
 
-A Chrome extension that highlights and marks text patterns on web pages with customizable badges and tooltips.
+A powerful Chrome extension that detects and highlights custom text patterns on web pages with visual badges and interactive tooltips.
 
-## Features
+---
 
-- **Text Pattern Detection**: Automatically detects and highlights text patterns on any webpage
-- **Customizable Groups**: Organize text patterns into groups with custom icons and colors
-- **Category Management**: Assign text patterns to multiple categories within groups
-- **Interactive Badges**: Click badges to see detailed tooltips with category information
-- **URL Filtering**: Control which websites the extension runs on (whitelist/blacklist modes)
-- **Flexible Configuration**: Easy-to-use popup interface for managing all settings
+<details><summary><h2>📖 Overview</h2></summary>
 
-## Installation
+### What This Extension Does
 
-1. Open Chrome and navigate to `chrome://extensions/`
-2. Enable "Developer mode" (toggle in top right corner)
-3. Click "Load unpacked"
-4. Select the `text-marker-extension` folder
-5. The extension will now be active
+Text Marker is a versatile Chrome extension that helps you visually identify and organize important text patterns across any website. Whether you're tracking product names, technical terms, project codes, or any other text patterns, this extension makes them instantly recognizable with customizable visual badges.
 
-## Usage
+### Key Capabilities
 
-Once installed, the extension will automatically detect and mark configured text patterns on any webpage.
+- **Pattern Detection**: Automatically scans web pages for your configured text patterns
+- **Visual Markers**: Displays color-coded badges next to detected patterns
+- **Organization**: Group related patterns together with custom icons and colors
+- **Categorization**: Assign patterns to multiple categories for better organization
+- **Smart Filtering**: Control which websites the extension runs on
+- **Interactive Tooltips**: Hover over badges to see detailed information
 
-### Configuration Panel
+### Why Use This Extension?
 
-Click the extension icon to open the configuration panel where you can:
+- **Improve Productivity**: Quickly spot important information while browsing
+- **Stay Organized**: Keep track of multiple text patterns across different contexts
+- **Reduce Cognitive Load**: Let visual cues do the work instead of manually searching
+- **Customize Your Experience**: Tailor the extension to your specific needs
+- **Privacy-Focused**: All data stored locally, no external servers
 
-#### Manage Groups
+### Use Cases
 
-- **Add Group**: Create new text pattern groups with custom icons and colors
-- **Edit Group**: Modify existing group properties
-- **Delete Group**: Remove groups you no longer need
+- **Research**: Track technical terms, concepts, or keywords across documentation
+- **Project Management**: Identify project codes, ticket numbers, or team names
+- **Content Creation**: Monitor brand names, product references, or competitors
+- **Learning**: Highlight vocabulary, formulas, or important concepts while studying
+- **Data Analysis**: Mark data points, metrics, or identifiers across dashboards
 
-#### Manage Categories
+</details>
 
-- **Add Category**: Create categories within groups
-- **Add Text Patterns**: Assign text patterns to categories
-- **Category URLs**: Optionally add URLs to categories for quick reference
+---
+
+<details>
+<summary><h2>🚀 Usage</h2></summary>
+
+### Installation
+
+1. Download or clone this repository
+2. Open Chrome and navigate to `chrome://extensions/`
+3. Enable **Developer mode** (toggle in top right)
+4. Click **"Load unpacked"**
+5. Select the `dist` folder from this project
+6. The extension icon will appear in your toolbar
+
+### Getting Started
+
+#### 1. Configure Your First Group
+
+1. Click the extension icon in your toolbar
+2. Go to the **Groups** tab
+3. Click **"Add Group"**
+4. Fill in:
+   - **Group Name**: e.g., "Important Terms"
+   - **Icon URL**: Link to an icon image (or leave blank for default)
+   - **Color**: Choose a color for this group's badges
+5. Click **"Save"**
+
+#### 2. Add Text Patterns
+
+1. Click on your newly created group
+2. Click **"Add Category"**
+3. Enter a category name (e.g., "Technical Terms")
+4. Add text patterns you want to detect (one per line)
+5. Optionally add a URL for quick reference
+6. Click **"Save"**
+
+#### 3. Activate on Websites
+
+**Option A: Automatic Mode (Recommended)**
+1. Go to **Settings** tab
+2. Click **"Enable Automatic Mode"**
+3. Grant permission when prompted
+4. Extension runs automatically on all websites
+
+**Option B: Manual Mode**
+1. Navigate to any website
+2. Click the extension icon
+3. Extension activates on that page only
+
+### Managing Your Configuration
+
+#### Edit Groups
+- Click the ✏️ icon on any group card
+- Modify name, icon, or color
+- Click **"Save"** to apply changes
+
+#### Delete Groups
+- Click the 🗑️ icon on any group card
+- Confirm deletion
 
 #### URL Filtering
 
-- **Whitelist Mode**: Extension only runs on specified URLs
-- **Blacklist Mode**: Extension runs everywhere except specified URLs
-- **Pattern Matching**: Use wildcards for flexible URL matching
+Control where the extension runs:
 
-## Development
+1. Go to **URL Filters** tab
+2. Choose mode:
+   - **Whitelist**: Only runs on specified URLs
+   - **Blacklist**: Runs everywhere except specified URLs
+3. Add URL patterns:
+   - `example.com` - Exact domain
+   - `*.example.com` - All subdomains
+   - `/https:\/\/.*\.example\.com/` - Regex pattern
 
-### Build
+#### Import/Export Configuration
 
-```bash
-npm run build
+**Export**:
+1. Go to **Settings** tab
+2. Click **"Export Configuration"**
+3. Save the JSON file
+
+**Import**:
+1. Go to **Settings** tab
+2. Click **"Import Configuration"**
+3. Select your JSON file
+4. Configuration is restored
+
+### Tips & Tricks
+
+- **Use Colors Wisely**: Assign similar colors to related groups
+- **Organize by Context**: Create separate groups for different projects or topics
+- **Leverage Categories**: Use categories to sub-divide patterns within a group
+- **Test Patterns**: Add patterns gradually and test on target websites
+- **Backup Regularly**: Export your configuration periodically
+
+</details>
+
+---
+
+<details>
+<summary><h2>🏗️ Code Walkthrough</h2></summary>
+
+### Architecture Overview
+
+The extension follows a modular architecture with clear separation of concerns:
+
+```
+text-marker-extension/
+├── content/          # Runs on web pages
+├── popup/            # Configuration UI
+├── background.ts     # Service worker
+├── shared/           # Shared utilities
+├── types/            # TypeScript definitions
+└── utils/            # Helper functions
 ```
 
-### Watch Mode
+### Core Components
 
-```bash
-npm run watch
+#### 1. **Content Script** (`content/content.ts`)
+The orchestrator that runs on web pages.
+
+**Responsibilities**:
+- Initializes symbol detection and badge rendering
+- Loads configuration from storage
+- Manages DOM observation for dynamic content
+- Handles configuration updates
+- Implements URL filtering logic
+
+**Key Methods**:
+- `loadConfiguration()`: Fetches user settings
+- `scanAndMark()`: Triggers symbol detection
+- `shouldRunOnCurrentUrl()`: Checks URL filters
+
+#### 2. **Symbol Detector** (`content/symbol-detector.ts`)
+Finds text patterns in the DOM.
+
+**Responsibilities**:
+- Builds regex patterns from configuration
+- Traverses DOM to find text nodes
+- Identifies pattern matches
+- Returns match locations and metadata
+
+**Key Methods**:
+- `buildRegexPatterns()`: Compiles patterns into regex
+- `detectSymbols()`: Scans DOM for matches
+- `findTextNodes()`: Locates text content in DOM
+
+#### 3. **Badge Renderer** (`content/badge-renderer.ts`)
+Creates visual badges and tooltips.
+
+**Responsibilities**:
+- Generates badge HTML elements
+- Applies styling and colors
+- Creates interactive tooltips
+- Manages badge lifecycle
+- Handles color contrast for readability
+
+**Key Methods**:
+- `createBadge()`: Generates badge container
+- `createTooltip()`: Builds tooltip with categories
+- `attachBadge()`: Inserts badge into DOM
+- `getContrastingBackground()`: Ensures text readability
+
+#### 4. **Popup Interface** (`popup/popup.ts`)
+Configuration management UI.
+
+**Responsibilities**:
+- Renders group and category management
+- Handles user input and validation
+- Manages import/export functionality
+- Controls permission requests
+- Implements URL filter configuration
+
+**Key Methods**:
+- `renderGroups()`: Displays configured groups
+- `saveConfiguration()`: Persists settings
+- `requestHostPermissions()`: Manages automatic mode
+
+#### 5. **Background Service Worker** (`background.ts`)
+Manages extension lifecycle and permissions.
+
+**Responsibilities**:
+- Handles extension installation/updates
+- Manages message passing between components
+- Injects content scripts (manual mode)
+- Monitors permission changes
+
+**Key Methods**:
+- `chrome.action.onClicked`: Handles icon clicks
+- `chrome.runtime.onMessage`: Processes messages
+- `hasHostPermissions()`: Checks permission status
+
+### Data Flow
+
+1. **Configuration Storage**:
+   ```
+   User Input → Popup → Chrome Storage → Content Script
+   ```
+
+2. **Pattern Detection**:
+   ```
+   Page Load → Content Script → Symbol Detector → Badge Renderer → DOM
+   ```
+
+3. **Permission Management**:
+   ```
+   User Action → Popup → Background Worker → Chrome Permissions API
+   ```
+
+### Key Technologies
+
+- **TypeScript**: Type-safe development
+- **Rollup**: Module bundling
+- **Jest**: Unit and integration testing
+- **Playwright**: End-to-end testing
+- **Chrome Extension APIs**: Storage, scripting, permissions
+
+### Testing Strategy
+
+- **Unit Tests**: Test individual components in isolation
+- **Integration Tests**: Test component interactions
+- **E2E Tests**: Test full user workflows in browser
+- **Coverage**: Maintain >95% code coverage
+
+</details>
+
+---
+
+<details>
+<summary><h2>🤝 How to Contribute</h2></summary>
+
+We welcome contributions from the community! Here's how you can help improve Text Marker.
+
+### Getting Started
+
+1. **Fork the Repository**
+   ```bash
+   # Click "Fork" on GitHub, then clone your fork
+   git clone https://github.com/YOUR_USERNAME/text-marker-chrome.git
+   cd text-marker-chrome
+   ```
+
+2. **Install Dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Create a Branch**
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+### Development Workflow
+
+1. **Make Your Changes**
+   - Write clean, readable code
+   - Follow existing code style
+   - Add comments for complex logic
+
+2. **Build the Extension**
+   ```bash
+   npm run build
+   ```
+
+3. **Test Your Changes**
+   ```bash
+   # Run all tests
+   npm test
+   
+   # Run E2E tests
+   npm run test:e2e
+   
+   # Check code formatting
+   npm run format:check
+   ```
+
+4. **Run Pre-commit Checks**
+   ```bash
+   ./pre-commit-check.sh
+   ```
+   This runs:
+   - Code formatting (Prettier)
+   - Type checking (TypeScript)
+   - Unit tests (Jest)
+   - Integration tests
+   - E2E tests (Playwright)
+   - Coverage checks
+
+### Contribution Guidelines
+
+#### Code Style
+
+- Use TypeScript for all new code
+- Follow existing naming conventions
+- Use meaningful variable and function names
+- Keep functions small and focused
+- Add JSDoc comments for public APIs
+
+#### Testing Requirements
+
+- Write unit tests for new functions
+- Add integration tests for component interactions
+- Include E2E tests for user-facing features
+- Maintain or improve code coverage
+
+#### Commit Messages
+
+Use clear, descriptive commit messages:
+```
+feat: Add support for regex patterns in URL filters
+fix: Resolve badge positioning issue on dynamic content
+docs: Update README with new configuration options
+test: Add E2E tests for permission flow
 ```
 
-### Testing
+### Types of Contributions
 
-```bash
-# Run all tests
-npm test
+#### 🐛 Bug Fixes
+- Check existing issues first
+- Include steps to reproduce
+- Add tests that verify the fix
 
-# Run with coverage
-npm run test:coverage
+#### ✨ New Features
+- Open an issue to discuss first
+- Ensure it aligns with project goals
+- Include documentation and tests
 
-# Run E2E tests
-npm run test:e2e
+#### 📚 Documentation
+- Fix typos or unclear explanations
+- Add examples and use cases
+- Improve code comments
 
-# Type checking
-npm run type-check
-```
+#### 🧪 Tests
+- Increase test coverage
+- Add edge case tests
+- Improve test reliability
 
-### Pre-commit Check
+#### 🎨 UI/UX Improvements
+- Enhance visual design
+- Improve user experience
+- Ensure accessibility
 
-```bash
-npm run precommit
-```
+### Pull Request Process
 
-## Architecture
+1. **Update Documentation**
+   - Update README if needed
+   - Add inline code comments
+   - Update CHANGELOG
 
-- **Content Script**: Detects symbols and renders badges on web pages
-- **Background Script**: Manages storage and configuration
-- **Popup**: User interface for configuration
-- **Symbol Detector**: Core logic for finding symbols in DOM
-- **Badge Renderer**: Creates and manages badge UI elements
+2. **Ensure Tests Pass**
+   ```bash
+   ./pre-commit-check.sh
+   ```
 
-## License
+3. **Submit Pull Request**
+   - Provide clear description
+   - Reference related issues
+   - Include screenshots for UI changes
+
+4. **Code Review**
+   - Address reviewer feedback
+   - Make requested changes
+   - Keep discussion professional
+
+5. **Merge**
+   - Maintainer will merge when approved
+   - Delete your branch after merge
+
+### Development Tips
+
+- **Hot Reload**: Use `npm run watch` for automatic rebuilds
+- **Debug Mode**: Enable DEBUG_MODE in `shared/constants.ts` for verbose logging
+- **Browser DevTools**: Use Chrome DevTools to debug content scripts
+- **Test in Isolation**: Load unpacked extension in a separate Chrome profile
+
+### Need Help?
+
+- 💬 Open an issue for questions
+- 📧 Contact maintainers
+- 📖 Read existing code and tests
+- 🔍 Search closed issues for similar problems
+
+### Code of Conduct
+
+- Be respectful and inclusive
+- Provide constructive feedback
+- Help others learn and grow
+- Follow project guidelines
+
+</details>
+
+---
+
+<details>
+<summary><h2>❓ FAQs</h2></summary>
+
+<details>
+<summary><strong>How do I install the extension?</strong></summary>
+
+1. Download or clone this repository
+2. Run `npm install` and `npm run build`
+3. Open Chrome and go to `chrome://extensions/`
+4. Enable "Developer mode" (top right toggle)
+5. Click "Load unpacked" and select the `dist` folder
+6. The extension icon will appear in your toolbar
+
+</details>
+
+<details>
+<summary><strong>What's the difference between Automatic and Manual mode?</strong></summary>
+
+**Automatic Mode**:
+- Extension runs automatically on all websites
+- Requires granting optional host permissions
+- Badges appear immediately on page load
+- Best for frequent use across many sites
+
+**Manual Mode**:
+- Click extension icon on each page to activate
+- No additional permissions required
+- More privacy-conscious
+- Best for occasional use or specific sites
+
+You can switch between modes in the Settings tab.
+
+</details>
+
+<details>
+<summary><strong>Why aren't my patterns being detected?</strong></summary>
+
+Check these common issues:
+
+1. **Case Sensitivity**: Patterns are case-sensitive by default
+2. **Exact Match**: Pattern must match exactly (including spaces)
+3. **URL Filters**: Check if the current site is filtered out
+4. **Mode**: Ensure extension is activated (check icon color)
+5. **Dynamic Content**: Some sites load content after page load - try refreshing
+
+**Debug Steps**:
+- Open browser console (F12)
+- Look for `[ContentScript]` log messages
+- Verify your pattern appears in the page source (Ctrl+U)
+
+</details>
+
+<details>
+<summary><strong>Can I use regular expressions for patterns?</strong></summary>
+
+Currently, patterns are matched as literal strings, not regex. However, you can:
+
+1. Add multiple variations of a pattern
+2. Use URL filters with regex patterns
+3. Request regex support as a feature
+
+Regex support for text patterns is on the roadmap!
+
+</details>
+
+<details>
+<summary><strong>How do I backup my configuration?</strong></summary>
+
+1. Click the extension icon
+2. Go to **Settings** tab
+3. Click **"Export Configuration"**
+4. Save the JSON file to a safe location
+
+To restore:
+1. Go to **Settings** tab
+2. Click **"Import Configuration"**
+3. Select your saved JSON file
+
+</details>
+
+<details>
+<summary><strong>Does this extension collect any data?</strong></summary>
+
+**No.** Text Marker:
+- Stores all data locally in Chrome's storage
+- Makes no network requests
+- Sends no analytics or telemetry
+- Does not track your browsing
+- Does not access or modify data on websites (only reads text for pattern matching)
+
+Your privacy is paramount.
+
+</details>
+
+<details>
+<summary><strong>Why do I need to grant permissions?</strong></summary>
+
+The extension requests these permissions:
+
+- **storage**: Save your configuration locally
+- **activeTab**: Access the current page when you click the icon
+- **scripting**: Inject the pattern detection code
+- **system.display**: Calculate window size for floating window feature
+- **optional_host_permissions**: (Optional) Run automatically on all sites
+
+All permissions are used solely for extension functionality.
+
+</details>
+
+<details>
+<summary><strong>Can I use this extension on mobile?</strong></summary>
+
+Currently, Text Marker only works on desktop Chrome. Mobile Chrome doesn't support extensions in the same way.
+
+However, you can use it on:
+- Chrome (desktop)
+- Edge (desktop)
+- Brave (desktop)
+- Any Chromium-based browser with extension support
+
+</details>
+
+<details>
+<summary><strong>How do I report a bug?</strong></summary>
+
+1. Go to the [GitHub Issues page](https://github.com/marcopierobon/text-marker-chrome/issues)
+2. Click "New Issue"
+3. Provide:
+   - Clear description of the bug
+   - Steps to reproduce
+   - Expected vs actual behavior
+   - Browser version
+   - Extension version
+   - Screenshots if applicable
+
+</details>
+
+<details>
+<summary><strong>Can I contribute to this project?</strong></summary>
+
+Absolutely! We welcome contributions:
+
+1. Read the **How to Contribute** section above
+2. Fork the repository
+3. Make your changes
+4. Submit a pull request
+
+All skill levels welcome - from fixing typos to adding features!
+
+</details>
+
+<details>
+<summary><strong>How do I uninstall the extension?</strong></summary>
+
+1. Go to `chrome://extensions/`
+2. Find "Text Marker"
+3. Click **"Remove"**
+4. Confirm removal
+
+Your configuration will be deleted. Export it first if you want to keep it.
+
+</details>
+
+<details>
+<summary><strong>Why are some badges not showing the right colors?</strong></summary>
+
+The extension automatically adjusts badge backgrounds for readability:
+- Dark text colors get white backgrounds
+- Light text colors get black backgrounds
+
+This ensures text is always readable. If you want different behavior, this can be customized in the code.
+
+</details>
+
+<details>
+<summary><strong>Can I use custom icons for groups?</strong></summary>
+
+Yes! When creating or editing a group:
+1. Enter a URL to any image in the "Icon URL" field
+2. Recommended: Use square images (PNG or SVG)
+3. The icon will appear next to detected patterns
+
+If no URL is provided, a default colored circle with the group's first letter is used.
+
+</details>
+
+<details>
+<summary><strong>What happens if two groups have the same pattern?</strong></summary>
+
+If a pattern appears in multiple groups:
+- All matching groups will be displayed
+- Each group shows its own icon and color
+- The tooltip shows all categories from all groups
+- Badges are displayed side-by-side
+
+This allows flexible organization of overlapping patterns.
+
+</details>
+
+<details>
+<summary><strong>How do I update the extension?</strong></summary>
+
+For development versions:
+1. Pull latest changes from GitHub
+2. Run `npm install` (if dependencies changed)
+3. Run `npm run build`
+4. Go to `chrome://extensions/`
+5. Click the refresh icon on the extension card
+
+For Chrome Web Store versions (when available):
+- Updates happen automatically
+
+</details>
+
+</details>
+
+---
+
+## 📄 License
 
 ISC
+
+---
+
+## 🔗 Links
+
+- [GitHub Repository](https://github.com/marcopierobon/text-marker-chrome)
+- [Report Issues](https://github.com/marcopierobon/text-marker-chrome/issues)
+- [Chrome Web Store](#) _(Coming soon)_
+
+---
+
+**Made with ☕ by [Marco Pierobon](https://buymeacoffee.com/pierobon)**
