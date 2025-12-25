@@ -12,15 +12,17 @@ let configuration: SymbolMarkerConfig = {
     mode: "whitelist",
     patterns: [],
   },
+  floatingWindow: false,
 };
 
 let currentEditingCategory: string | null = null;
 let currentGroupIndex: number = -1;
 
 // Initialize
-document.addEventListener("DOMContentLoaded", () => {
-  loadConfiguration();
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadConfiguration();
   setupEventListeners();
+  await checkAndConvertToFloatingWindow();
 });
 
 // Load configuration from storage (hybrid approach)
@@ -49,6 +51,11 @@ async function loadConfiguration(): Promise<void> {
       configuration.urlFilters = { mode: "whitelist", patterns: [] };
     }
 
+    // Ensure floatingWindow has a default value
+    if (configuration.floatingWindow === undefined) {
+      configuration.floatingWindow = false;
+    }
+
     renderGroups();
     renderURLPatterns();
 
@@ -57,6 +64,14 @@ async function loadConfiguration(): Promise<void> {
       `input[name="filter-mode"][value="${configuration.urlFilters.mode}"]`,
     );
     if (modeRadio) modeRadio.checked = true;
+
+    // Set floating window toggle
+    const floatingToggle = document.getElementById(
+      "floating-window-toggle",
+    ) as HTMLInputElement;
+    if (floatingToggle) {
+      floatingToggle.checked = configuration.floatingWindow || false;
+    }
   } catch (error) {
     console.error("Error loading configuration:", error);
     showToast("Error loading configuration", "error");
@@ -183,6 +198,11 @@ function setupEventListeners(): void {
 
   // URL Filter listeners
   setupURLFilterListeners();
+
+  // Floating window toggle
+  document
+    .getElementById("floating-window-toggle")!
+    .addEventListener("change", (e) => handleFloatingWindowToggle(e as Event));
 
   // Close modals on outside click
   document.getElementById("group-modal")!.addEventListener("click", (e) => {
@@ -677,7 +697,65 @@ function getDefaultConfiguration(): SymbolMarkerConfig {
       mode: "whitelist",
       patterns: [],
     },
+    floatingWindow: false,
   };
+}
+
+// Floating Window Functions
+async function handleFloatingWindowToggle(event: Event): Promise<void> {
+  const checkbox = event.target as HTMLInputElement;
+  const isEnabled = checkbox.checked;
+
+  configuration.floatingWindow = isEnabled;
+  await saveConfigurationToStorage();
+
+  if (isEnabled) {
+    // Convert current popup to floating window
+    await convertToFloatingWindow();
+  } else {
+    // If we're in a floating window, close it
+    // The popup will revert to normal behavior on next open
+    showToast(
+      "Floating window mode disabled. Close and reopen to see changes.",
+      "success",
+    );
+  }
+}
+
+async function checkAndConvertToFloatingWindow(): Promise<void> {
+  // Only convert if floating window is enabled and we're in a popup (not already a window)
+  if (configuration.floatingWindow) {
+    // Check if we're in a popup or a window
+    const currentWindow = await chrome.windows.getCurrent();
+
+    // If we're in a popup type, convert to floating window
+    if (currentWindow.type === "popup") {
+      await convertToFloatingWindow();
+    }
+  }
+}
+
+async function convertToFloatingWindow(): Promise<void> {
+  try {
+    // Get current window to close it after creating the new one
+    const currentWindow = await chrome.windows.getCurrent();
+
+    // Create a new floating window
+    await chrome.windows.create({
+      url: chrome.runtime.getURL("popup/popup.html"),
+      type: "popup",
+      width: 800,
+      height: 600,
+      focused: true,
+    });
+
+    // Close the current popup window
+    if (currentWindow.id) {
+      await chrome.windows.remove(currentWindow.id);
+    }
+  } catch {
+    showToast("Error creating floating window", "error");
+  }
 }
 
 // Show toast notification

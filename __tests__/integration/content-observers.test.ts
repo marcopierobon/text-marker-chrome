@@ -103,13 +103,13 @@ describe("Content Script Observers - Advanced Tests", () => {
       const badge = renderer.createBadge("AAPL", groups);
       renderer.attachBadge(symbolElement!, badge);
 
-      expect(document.querySelectorAll(".symbol-badge").length).toBe(1);
+      expect(document.querySelectorAll(".fool-badge").length).toBe(1);
 
       // Change text content
       symbolElement!.textContent = "MSFT";
 
       // Old badge still exists (would need re-scan to update)
-      expect(document.querySelectorAll(".symbol-badge").length).toBe(1);
+      expect(document.querySelectorAll(".fool-badge").length).toBe(1);
     });
 
     test("handles observer disconnection and reconnection", () => {
@@ -314,7 +314,7 @@ describe("Content Script Observers - Advanced Tests", () => {
       }
 
       // Should have created badges for new elements
-      const badges = document.querySelectorAll(".symbol-badge");
+      const badges = document.querySelectorAll(".fool-badge");
       expect(badges.length).toBeGreaterThan(0);
       expect(badges.length).toBeLessThanOrEqual(10);
     });

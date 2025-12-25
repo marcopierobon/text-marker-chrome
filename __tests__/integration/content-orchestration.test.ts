@@ -612,7 +612,7 @@ describe("Content Script Orchestration - Advanced Tests", () => {
 
       // Should create empty badge without errors
       expect(badge).toBeDefined();
-      expect(badge.className).toContain("symbol-badge");
+      expect(badge.className).toContain("fool-badge");
     });
   });
 });

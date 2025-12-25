@@ -127,7 +127,7 @@ describe("User Interactions - Unit Tests", () => {
 
       // Should not throw errors
       expect(badge).toBeTruthy();
-      expect(badge.className).toContain("symbol-badge");
+      expect(badge.className).toContain("fool-badge");
     });
   });
 
@@ -421,7 +421,7 @@ describe("User Interactions - Unit Tests", () => {
       document.body.appendChild(badge);
 
       // Badge should be identifiable
-      expect(badge.className).toContain("symbol-badge");
+      expect(badge.className).toContain("fool-badge");
       expect(badge.getAttribute("data-symbol")).toBe("AAPL");
     });
 

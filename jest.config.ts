@@ -5,6 +5,23 @@ const config: Config = {
   testEnvironment: "jsdom",
   moduleFileExtensions: ["ts", "tsx", "js", "jsx"],
   extensionsToTreatAsEsm: [],
+  // Setup files run before each test file
+  setupFilesAfterEnv: ["<rootDir>/__tests__/setup.ts"],
+  // Don't show coverage by default (use --coverage flag to enable)
+  collectCoverage: false,
+  // Show test results in a more readable format
+  verbose: true,
+  // Don't print test results while tests are running
+  notify: false,
+  // Don't clear the console between tests
+  clearMocks: true,
+  // Reset modules between tests to avoid state leaks
+  resetModules: true,
+  // Don't watch for file changes by default
+  watch: false,
+  // Don't show output from tests (we'll handle this in setup.ts)
+  silent: true,
+
   transform: {
     "^.+\\.tsx?$": [
       "ts-jest",

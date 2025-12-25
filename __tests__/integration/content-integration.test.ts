@@ -64,7 +64,7 @@ describe("Content Integration Tests", () => {
 
       expect(badgeCount).toBeGreaterThanOrEqual(2);
       expect(
-        document.querySelectorAll(".symbol-badge").length,
+        document.querySelectorAll(".fool-badge").length,
       ).toBeGreaterThanOrEqual(2);
     });
 
@@ -102,7 +102,7 @@ describe("Content Integration Tests", () => {
         });
       });
 
-      const badges = document.querySelectorAll(".symbol-badge");
+      const badges = document.querySelectorAll(".fool-badge");
       expect(badges.length).toBeGreaterThan(0);
     });
 
@@ -137,7 +137,7 @@ describe("Content Integration Tests", () => {
 
       expect(success1).toBe(true);
       expect(success2).toBe(false);
-      expect(document.querySelectorAll(".symbol-badge").length).toBe(1);
+      expect(document.querySelectorAll(".fool-badge").length).toBe(1);
     });
   });
 
@@ -163,7 +163,7 @@ describe("Content Integration Tests", () => {
 
       const badge = renderer.createBadge("AAPL", groups);
 
-      expect(badge.classList.contains("symbol-badge")).toBe(true);
+      expect(badge.classList.contains("fool-badge")).toBe(true);
       // Check that badge has child elements (group containers)
       expect(badge.children.length).toBeGreaterThanOrEqual(1);
     });
@@ -171,10 +171,10 @@ describe("Content Integration Tests", () => {
     test("handles category objects with URLs in badge tooltips", () => {
       const testGroups = [
         {
-          name: "...",
-          iconUrl: "...",
+          name: "Test Group",
+          iconUrl: "https://example.com/icon.png",
           color: "#ff0000",
-          url: "...",
+          url: "https://example.com/group",
           categories: {
             "Buy Now": {
               symbols: ["NVDA"],
@@ -188,8 +188,12 @@ describe("Content Integration Tests", () => {
       const groups = detector.getGroupsForSymbol("NVDA");
       const badge = renderer.createBadge("NVDA", groups);
 
-      const tooltip = badge!.querySelector(".symbol-tooltip");
-      expect(tooltip).toBeTruthy();
+      // Attach badge to DOM so tooltip can be queried
+      document.body.appendChild(badge);
+
+      const tooltip = document.querySelector(".symbol-tooltip");
+      expect(tooltip).not.toBeNull();
+      expect(tooltip!.textContent).toContain("Test Group");
 
       // Check for link buttons (they use window.open, not <a> tags)
       const linkButtons = tooltip!.querySelectorAll("button");
@@ -478,13 +482,13 @@ describe("Content Integration Tests", () => {
         });
       });
 
-      expect(document.querySelectorAll(".symbol-badge").length).toBeGreaterThan(
+      expect(document.querySelectorAll(".fool-badge").length).toBeGreaterThan(
         0,
       );
       expect(renderer.getBadgeCount()).toBeGreaterThan(0);
 
       renderer.clearBadges();
-      expect(document.querySelectorAll(".symbol-badge").length).toBe(0);
+      expect(document.querySelectorAll(".fool-badge").length).toBe(0);
       expect(renderer.getBadgeCount()).toBe(0);
 
       renderer.resetMarkedElements();
@@ -504,21 +508,21 @@ describe("Content Integration Tests", () => {
     test("handles nested badge cleanup", () => {
       document.body.innerHTML = `
                 <div>
-                    <span class="symbol-badge">Badge 1</span>
+                    <span class="fool-badge">Badge 1</span>
                     <div>
-                        <span class="symbol-badge">Badge 2</span>
+                        <span class="fool-badge">Badge 2</span>
                         <div>
-                            <span class="symbol-badge">Badge 3</span>
+                            <span class="fool-badge">Badge 3</span>
                         </div>
                     </div>
                 </div>
             `;
 
-      expect(document.querySelectorAll(".symbol-badge").length).toBe(3);
+      expect(document.querySelectorAll(".fool-badge").length).toBe(3);
 
       renderer.clearBadges();
 
-      expect(document.querySelectorAll(".symbol-badge").length).toBe(0);
+      expect(document.querySelectorAll(".fool-badge").length).toBe(0);
     });
   });
 });

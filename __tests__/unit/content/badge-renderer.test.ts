@@ -30,7 +30,7 @@ describe("BadgeRenderer", () => {
 
       const badge = renderer.createBadge("AAPL", groups);
 
-      expect(badge.className).toContain("symbol-badge");
+      expect(badge.className).toContain("fool-badge");
       expect(badge.children.length).toBeGreaterThan(0);
     });
 
@@ -46,7 +46,7 @@ describe("BadgeRenderer", () => {
 
       const badge = renderer.createBadge("AAPL", groups);
 
-      expect(badge.className).toContain("symbol-badge");
+      expect(badge.className).toContain("fool-badge");
       expect(badge).toBeTruthy();
     });
 
@@ -62,7 +62,7 @@ describe("BadgeRenderer", () => {
 
       const badge = renderer.createBadge("AAPL", groups);
 
-      expect(badge.className).toContain("symbol-badge");
+      expect(badge.className).toContain("fool-badge");
       expect(badge).toBeTruthy();
     });
 

@@ -23,7 +23,7 @@ export class BadgeRenderer {
    */
   createBadge(symbol: string, groups: BadgeGroup[]): HTMLSpanElement {
     const container = document.createElement("span");
-    container.className = "symbol-badge";
+    container.className = "fool-badge";
     container.setAttribute("data-symbol", symbol);
     container.style.display = "inline-flex";
     container.style.alignItems = "center";
@@ -358,7 +358,7 @@ export class BadgeRenderer {
    */
   bringToFront(tooltip: HTMLElement, container: HTMLElement | null): void {
     const allTooltips = document.querySelectorAll(".symbol-tooltip");
-    const allBadges = document.querySelectorAll(".symbol-badge");
+    const allBadges = document.querySelectorAll(".fool-badge");
     let maxZIndex = 10000;
 
     allTooltips.forEach((t) => {
@@ -425,9 +425,7 @@ export class BadgeRenderer {
    * Remove all badges from the page (useful for cleanup or refresh)
    */
   clearBadges(): void {
-    document
-      .querySelectorAll(".symbol-badge")
-      .forEach((badge) => badge.remove());
+    document.querySelectorAll(".fool-badge").forEach((badge) => badge.remove());
     log.info(`🗑️ Removed all badges`);
   }
 
@@ -444,6 +442,6 @@ export class BadgeRenderer {
    * @returns Number of badges
    */
   getBadgeCount(): number {
-    return document.querySelectorAll(".symbol-badge").length;
+    return document.querySelectorAll(".fool-badge").length;
   }
 }

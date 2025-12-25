@@ -88,18 +88,18 @@ test.describe("Content Integration E2E Tests", () => {
     await page.waitForTimeout(2000);
 
     // Check that badges were created for NVDA, MSFT, GOOGL
-    const badges = await page.locator(".symbol-badge").count();
+    const badges = await page.locator(".fool-badge").count();
     expect(badges).toBeGreaterThanOrEqual(3);
 
     // Verify specific symbols have badges using data-symbol attribute
     const nvdaBadge = await page
-      .locator('.symbol-badge[data-symbol="NVDA"]')
+      .locator('.fool-badge[data-symbol="NVDA"]')
       .count();
     const msftBadge = await page
-      .locator('.symbol-badge[data-symbol="MSFT"]')
+      .locator('.fool-badge[data-symbol="MSFT"]')
       .count();
     const googlBadge = await page
-      .locator('.symbol-badge[data-symbol="GOOGL"]')
+      .locator('.fool-badge[data-symbol="GOOGL"]')
       .count();
 
     expect(nvdaBadge).toBeGreaterThan(0);
@@ -113,13 +113,13 @@ test.describe("Content Integration E2E Tests", () => {
 
     // Check for AAPL, TSLA, AMZN badges using data-symbol attribute
     const aaplBadge = await page
-      .locator('.symbol-badge[data-symbol="AAPL"]')
+      .locator('.fool-badge[data-symbol="AAPL"]')
       .count();
     const tslaBadge = await page
-      .locator('.symbol-badge[data-symbol="TSLA"]')
+      .locator('.fool-badge[data-symbol="TSLA"]')
       .count();
     const amznBadge = await page
-      .locator('.symbol-badge[data-symbol="AMZN"]')
+      .locator('.fool-badge[data-symbol="AMZN"]')
       .count();
 
     expect(aaplBadge).toBeGreaterThan(0);
@@ -132,7 +132,7 @@ test.describe("Content Integration E2E Tests", () => {
     await page.waitForTimeout(2000);
 
     // Find AAPL badge and check it has group containers
-    const aaplBadge = page.locator('.symbol-badge[data-symbol="AAPL"]').first();
+    const aaplBadge = page.locator('.fool-badge[data-symbol="AAPL"]').first();
     await expect(aaplBadge).toBeVisible();
 
     // Check that badge exists and has content (icon or category label)
@@ -146,7 +146,7 @@ test.describe("Content Integration E2E Tests", () => {
     await page.waitForTimeout(2000);
 
     // Find AAPL badge which has multiple categories (AI and Portfolio) so it will have a tooltip
-    const badge = page.locator('.symbol-badge[data-symbol="AAPL"]').first();
+    const badge = page.locator('.fool-badge[data-symbol="AAPL"]').first();
     await expect(badge).toBeVisible();
 
     // AAPL appears in 2 categories (AI and Portfolio), so it should have a tooltip button
@@ -167,7 +167,7 @@ test.describe("Content Integration E2E Tests", () => {
     await page.waitForTimeout(2000);
 
     // Get initial badge count
-    const initialBadges = await page.locator(".symbol-badge").count();
+    const initialBadges = await page.locator(".fool-badge").count();
 
     // Add dynamic content
     await page.evaluate(() => (window as any).testHelpers.addDynamicContent());
@@ -176,16 +176,16 @@ test.describe("Content Integration E2E Tests", () => {
     await page.waitForTimeout(2000);
 
     // Check that new badges were added
-    const finalBadges = await page.locator(".symbol-badge").count();
+    const finalBadges = await page.locator(".fool-badge").count();
     expect(finalBadges).toBeGreaterThanOrEqual(initialBadges);
 
     // Verify AMZN and GOOGL in dynamic content have badges
     const dynamicSection = page.locator("#dynamic-root");
     const amznInDynamic = await dynamicSection
-      .locator('.symbol-badge[data-symbol="AMZN"]')
+      .locator('.fool-badge[data-symbol="AMZN"]')
       .count();
     const googlInDynamic = await dynamicSection
-      .locator('.symbol-badge[data-symbol="GOOGL"]')
+      .locator('.fool-badge[data-symbol="GOOGL"]')
       .count();
 
     expect(amznInDynamic + googlInDynamic).toBeGreaterThan(0);
@@ -242,10 +242,10 @@ test.describe("Content Integration E2E Tests", () => {
     // Check that TSLA and NVDA have badges but not AAPL
     const test4Section = page.locator("#test-4");
     const tslaBadge = await test4Section
-      .locator('.symbol-badge[data-symbol="TSLA"]')
+      .locator('.fool-badge[data-symbol="TSLA"]')
       .count();
     const nvdaBadge = await test4Section
-      .locator('.symbol-badge[data-symbol="NVDA"]')
+      .locator('.fool-badge[data-symbol="NVDA"]')
       .count();
 
     expect(tslaBadge).toBeGreaterThan(0);
@@ -289,10 +289,10 @@ test.describe("Content Integration E2E Tests", () => {
     // Check for BRKB and BFA badges in test-3
     const test3Section = page.locator("#test-3");
     const brkbBadge = await test3Section
-      .locator('.symbol-badge[data-symbol="BRKB"]')
+      .locator('.fool-badge[data-symbol="BRKB"]')
       .count();
     const bfaBadge = await test3Section
-      .locator('.symbol-badge[data-symbol="BFA"]')
+      .locator('.fool-badge[data-symbol="BFA"]')
       .count();
 
     expect(brkbBadge).toBeGreaterThan(0);

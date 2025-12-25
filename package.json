@@ -1,8 +1,8 @@
 {
-  "name": "motley-fool-extension",
+  "name": "text-marker-extension",
   "version": "1.0.0",
   "type": "module",
-  "description": "This Chrome extension displays the Motley Fool icon with category labels next to tracked stock symbols on Alpaca Markets and eToro.",
+  "description": "Chrome extension for text pattern detection and marking with customizable badges and tooltips",
   "main": "background.js",
   "scripts": {
     "build": "rollup -c rollup.config.ts --configPlugin typescript",

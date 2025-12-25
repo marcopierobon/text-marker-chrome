@@ -135,7 +135,7 @@ export class SymbolDetector {
           }
 
           if (
-            parent.classList.contains("symbol-badge") ||
+            parent.classList.contains("fool-badge") ||
             parent.classList.contains("symbol-tooltip")
           ) {
             return NodeFilter.FILTER_REJECT;

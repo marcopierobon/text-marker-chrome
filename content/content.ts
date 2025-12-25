@@ -137,15 +137,14 @@ class ContentScript {
 
         // Skip if parent is our badge or tooltip
         if (
-          parent.classList.contains("symbol-badge") ||
+          parent.classList.contains("fool-badge") ||
           parent.classList.contains("symbol-tooltip")
         ) {
           return;
         }
 
         // Check if badge already exists right next to this element
-        if (parent.nextElementSibling?.classList.contains("symbol-badge"))
-          return;
+        if (parent.nextElementSibling?.classList.contains("fool-badge")) return;
 
         // Only mark if this is a leaf element or has minimal children
         const childElementCount = parent.querySelectorAll("*").length;

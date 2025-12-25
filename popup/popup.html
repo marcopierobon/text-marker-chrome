@@ -76,7 +76,18 @@
 
         <div class="tab-content" id="import-export-tab">
             <div class="import-export-section">
-                <h3>Export Configuration</h3>
+                <h3>Window Settings</h3>
+                <div class="form-group">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="floating-window-toggle">
+                        <span class="toggle-text">
+                            <strong>Floating Window Mode</strong>
+                            <small class="help-text">Open configuration in a separate floating window</small>
+                        </span>
+                    </label>
+                </div>
+
+                <h3 style="margin-top: 2rem;">Export Configuration</h3>
                 <p class="help-text">Download your current configuration as JSON</p>
                 <button class="btn btn-secondary" id="export-btn">
                     <span class="icon">📥</span> Export Configuration

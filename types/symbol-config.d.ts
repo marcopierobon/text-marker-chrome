@@ -18,6 +18,7 @@ export interface SymbolGroup {
 export interface SymbolMarkerConfig {
   groups: SymbolGroup[];
   urlFilters?: UrlFilters;
+  floatingWindow?: boolean;
 }
 
 export interface UrlFilters {

@@ -1,9 +1,29 @@
 import typescriptEslint from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 
+// Ignore patterns for ESLint
+const ignorePatterns = [
+  '**/node_modules/**',
+  '**/dist/**',
+  '**/build/**',
+  '**/coverage/**',
+  '**/.stryker-tmp/**',
+];
+
 export default [
+  // Main configuration for all TypeScript files
+  {
+    ignores: ignorePatterns,
+  },
   {
     files: ["**/*.ts", "**/*.tsx"],
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/build/**',
+      '**/coverage/**',
+      '**/.stryker-tmp/**',
+    ],
     plugins: {
       "@typescript-eslint": typescriptEslint,
     },
@@ -31,14 +51,21 @@ export default [
       },
     },
     rules: {
+      // TypeScript rules
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unused-vars": [
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
-      "no-console": ["warn", { allow: ["warn", "error"] }],
+      
+      // Console rules - allow all console methods in development
+      "no-console": process.env.NODE_ENV === 'production' 
+        ? ["warn", { allow: ["warn", "error"] }]
+        : "off",
     },
   },
+  
+  // Test files configuration
   {
     files: ["**/__tests__/**/*.ts", "**/*.test.ts", "**/*.spec.ts"],
     rules: {
@@ -47,6 +74,8 @@ export default [
       "no-console": "off",
     },
   },
+  
+  // Configuration for build and config files
   {
     ignores: ["dist/", "node_modules/", "**/*.js", "**/*.cjs", "coverage/"],
   },
