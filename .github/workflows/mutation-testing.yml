@@ -1,0 +1,129 @@
+name: Mutation Testing
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+jobs:
+  mutation-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run mutation tests
+        id: mutation
+        continue-on-error: true
+        run: |
+          # Note: Mutation testing is currently disabled in pre-commit-check.sh
+          # due to compatibility issues with dynamic jest.config.ts
+          # This workflow is prepared for when mutation testing is re-enabled
+          
+          # npm run test:mutation --reporters=json > mutation-report.json || true
+          # MUTATION_SCORE=$(jq -r '.mutationScore' mutation-report.json || echo "0")
+          # echo "mutation_score=$MUTATION_SCORE" >> $GITHUB_OUTPUT
+          # echo "Mutation Score: $MUTATION_SCORE%"
+          
+          echo "mutation_score=0" >> $GITHUB_OUTPUT
+          echo "⚠️ Mutation testing is currently disabled"
+
+      - name: Download master mutation score
+        id: master-mutation
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: |
+          # Try to get the latest master mutation score from artifacts
+          gh run list --branch master --workflow "Mutation Testing" --limit 1 --json databaseId --jq '.[0].databaseId' > run_id.txt || echo "0" > run_id.txt
+          RUN_ID=$(cat run_id.txt)
+          
+          if [ "$RUN_ID" != "0" ]; then
+            gh run download $RUN_ID -n mutation-baseline || echo "No mutation artifact found"
+            if [ -f master-mutation-score.json ]; then
+              MASTER_SCORE=$(jq -r '.mutationScore' master-mutation-score.json)
+              echo "master_mutation_score=$MASTER_SCORE" >> $GITHUB_OUTPUT
+              echo "Master Mutation Score: $MASTER_SCORE%"
+            else
+              echo "master_mutation_score=0" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "master_mutation_score=0" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Compare mutation scores
+        if: github.event_name == 'pull_request' && steps.master-mutation.outputs.master_mutation_score != '0'
+        run: |
+          PR_SCORE=${{ steps.mutation.outputs.mutation_score }}
+          MASTER_SCORE=${{ steps.master-mutation.outputs.master_mutation_score }}
+          
+          echo "PR Mutation Score: $PR_SCORE%"
+          echo "Master Mutation Score: $MASTER_SCORE%"
+          
+          if (( $(echo "$PR_SCORE < $MASTER_SCORE" | bc -l) )); then
+            echo "❌ Mutation score decreased from $MASTER_SCORE% to $PR_SCORE%"
+            exit 1
+          else
+            echo "✅ Mutation score maintained or improved: $PR_SCORE% (was $MASTER_SCORE%)"
+          fi
+
+      - name: Save mutation score for master
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        run: |
+          echo '{"mutationScore": ${{ steps.mutation.outputs.mutation_score }}}' > master-mutation-score.json
+
+      - name: Upload mutation baseline
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-baseline
+          path: master-mutation-score.json
+          retention-days: 90
+
+      - name: Comment PR with mutation score
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        continue-on-error: true
+        with:
+          script: |
+            const prScore = '${{ steps.mutation.outputs.mutation_score }}';
+            const masterScore = '${{ steps.master-mutation.outputs.master_mutation_score }}';
+            
+            let message = `## 🧬 Mutation Testing Report\n\n`;
+            
+            if (prScore === '0') {
+              message += `⚠️ Mutation testing is currently disabled due to compatibility issues.\n`;
+              message += `This will be re-enabled once the jest.config.ts compatibility issue is resolved.\n`;
+            } else {
+              message += `- **PR Mutation Score:** ${prScore}%\n`;
+              
+              if (masterScore !== '0') {
+                message += `- **Master Mutation Score:** ${masterScore}%\n`;
+                const diff = (parseFloat(prScore) - parseFloat(masterScore)).toFixed(2);
+                const emoji = diff >= 0 ? '✅' : '❌';
+                message += `- **Change:** ${emoji} ${diff > 0 ? '+' : ''}${diff}%\n`;
+              }
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });

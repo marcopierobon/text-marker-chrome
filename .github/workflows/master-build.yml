@@ -1,0 +1,204 @@
+name: Master Build
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Check code formatting
+        run: npx prettier --check "**/*.{ts,js,json,md}"
+
+      - name: Run security audit
+        run: |
+          AUDIT_OUTPUT=$(npm audit --json 2>&1)
+          CRITICAL=$(echo "$AUDIT_OUTPUT" | jq -r '.metadata.vulnerabilities.critical // 0' 2>/dev/null || echo "0")
+          HIGH=$(echo "$AUDIT_OUTPUT" | jq -r '.metadata.vulnerabilities.high // 0' 2>/dev/null || echo "0")
+          
+          if [ "$CRITICAL" != "0" ] || [ "$HIGH" != "0" ]; then
+            echo "Security audit failed - Found $CRITICAL critical and $HIGH high vulnerabilities"
+            npm audit --audit-level=high
+            exit 1
+          fi
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run type checking
+        run: npm run type-check
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Run unit tests
+        run: npm test -- __tests__/unit
+
+      - name: Run integration tests
+        run: npm test -- __tests__/integration
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+      - name: Run coverage and generate report
+        run: npm run test:coverage -- --coverage --coverageReporters=json-summary --coverageReporters=lcov
+
+      - name: Get coverage percentage
+        id: coverage
+        run: |
+          COVERAGE=$(jq -r '.total.lines.pct' coverage/coverage-summary.json)
+          echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+          echo "Coverage: $COVERAGE%"
+
+      - name: Upload coverage report as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            coverage/coverage-summary.json
+            coverage/lcov.info
+          retention-days: 90
+
+      - name: Save coverage for future comparisons
+        run: |
+          cp coverage/coverage-summary.json master-coverage-summary.json
+
+      - name: Upload master coverage baseline
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-baseline
+          path: master-coverage-summary.json
+          retention-days: 90
+
+      - name: Determine version bump
+        id: version
+        run: |
+          # Get current version from package.json
+          CURRENT_VERSION=$(jq -r '.version' package.json)
+          echo "Current version: $CURRENT_VERSION"
+          
+          # Get latest tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $LATEST_TAG"
+          
+          # Remove 'v' prefix if present
+          LATEST_VERSION=${LATEST_TAG#v}
+          
+          # Split version into parts
+          IFS='.' read -r -a VERSION_PARTS <<< "$LATEST_VERSION"
+          MAJOR=${VERSION_PARTS[0]:-1}
+          MINOR=${VERSION_PARTS[1]:-0}
+          PATCH=${VERSION_PARTS[2]:-0}
+          
+          # Increment patch version
+          PATCH=$((PATCH + 1))
+          
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          echo "New version: $NEW_VERSION"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update package.json version
+        run: |
+          NEW_VERSION=${{ steps.version.outputs.version }}
+          jq --arg version "$NEW_VERSION" '.version = $version' package.json > package.json.tmp
+          mv package.json.tmp package.json
+          echo "Updated package.json to version $NEW_VERSION"
+
+      - name: Update manifest.json version
+        run: |
+          NEW_VERSION=${{ steps.version.outputs.version }}
+          jq --arg version "$NEW_VERSION" '.version = $version' manifest.json > manifest.json.tmp
+          mv manifest.json.tmp manifest.json
+          echo "Updated manifest.json to version $NEW_VERSION"
+
+      - name: Rebuild with new version
+        run: npm run build
+
+      - name: Create ZIP archive
+        run: |
+          cd dist
+          zip -r ../text-marker-extension-${{ steps.version.outputs.version }}.zip .
+          cd ..
+          echo "Created text-marker-extension-${{ steps.version.outputs.version }}.zip"
+
+      - name: Create release notes
+        id: release-notes
+        run: |
+          cat > release-notes.md << 'EOF'
+          ## 🚀 Release ${{ steps.version.outputs.version }}
+          
+          ### 📊 Metrics
+          - **Test Coverage:** ${{ steps.coverage.outputs.coverage }}%
+          - **Build Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          - **Commit:** ${{ github.sha }}
+          
+          ### 📦 Installation
+          1. Download `text-marker-extension-${{ steps.version.outputs.version }}.zip`
+          2. Extract the ZIP file
+          3. Open Chrome and go to `chrome://extensions/`
+          4. Enable "Developer mode"
+          5. Click "Load unpacked" and select the extracted folder
+          
+          ### 📝 Changes
+          See commit history for detailed changes.
+          EOF
+          
+          cat release-notes.md
+
+      - name: Create Git tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${{ steps.version.outputs.version }}" -m "Release v${{ steps.version.outputs.version }}"
+          git push origin "v${{ steps.version.outputs.version }}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release v${{ steps.version.outputs.version }}
+          body_path: release-notes.md
+          files: |
+            text-marker-extension-${{ steps.version.outputs.version }}.zip
+            dist/**/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload dist folder as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-dist-v${{ steps.version.outputs.version }}
+          path: dist/
+          retention-days: 90
+
+      - name: Commit version updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json manifest.json
+          git commit -m "chore: bump version to ${{ steps.version.outputs.version }} [skip ci]" || echo "No changes to commit"
+          git push origin master || echo "No changes to push"

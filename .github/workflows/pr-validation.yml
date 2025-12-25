@@ -1,0 +1,142 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Check code formatting
+        run: npx prettier --check "**/*.{ts,js,json,md}"
+
+      - name: Run security audit
+        run: |
+          AUDIT_OUTPUT=$(npm audit --json 2>&1)
+          CRITICAL=$(echo "$AUDIT_OUTPUT" | jq -r '.metadata.vulnerabilities.critical // 0' 2>/dev/null || echo "0")
+          HIGH=$(echo "$AUDIT_OUTPUT" | jq -r '.metadata.vulnerabilities.high // 0' 2>/dev/null || echo "0")
+          
+          if [ "$CRITICAL" != "0" ] || [ "$HIGH" != "0" ]; then
+            echo "Security audit failed - Found $CRITICAL critical and $HIGH high vulnerabilities"
+            npm audit --audit-level=high
+            exit 1
+          fi
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run type checking
+        run: npm run type-check
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Run unit tests
+        run: npm test -- __tests__/unit
+
+      - name: Run integration tests
+        run: npm test -- __tests__/integration
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+      - name: Run coverage and generate report
+        run: npm run test:coverage -- --coverage --coverageReporters=json-summary
+
+      - name: Get PR coverage
+        id: pr-coverage
+        run: |
+          COVERAGE=$(jq -r '.total.lines.pct' coverage/coverage-summary.json)
+          echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+          echo "PR Coverage: $COVERAGE%"
+
+      - name: Download master coverage
+        id: master-coverage
+        continue-on-error: true
+        run: |
+          # Try to get the latest master coverage from artifacts
+          gh run list --branch master --workflow "Master Build" --limit 1 --json databaseId --jq '.[0].databaseId' > run_id.txt || echo "0" > run_id.txt
+          RUN_ID=$(cat run_id.txt)
+          
+          if [ "$RUN_ID" != "0" ]; then
+            gh run download $RUN_ID -n coverage-report || echo "No coverage artifact found"
+            if [ -f master-coverage-summary.json ]; then
+              MASTER_COVERAGE=$(jq -r '.total.lines.pct' master-coverage-summary.json)
+              echo "master_coverage=$MASTER_COVERAGE" >> $GITHUB_OUTPUT
+              echo "Master Coverage: $MASTER_COVERAGE%"
+            else
+              echo "master_coverage=0" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "master_coverage=0" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Compare coverage
+        if: steps.master-coverage.outputs.master_coverage != '0'
+        run: |
+          PR_COV=${{ steps.pr-coverage.outputs.coverage }}
+          MASTER_COV=${{ steps.master-coverage.outputs.master_coverage }}
+          
+          echo "PR Coverage: $PR_COV%"
+          echo "Master Coverage: $MASTER_COV%"
+          
+          if (( $(echo "$PR_COV < $MASTER_COV" | bc -l) )); then
+            echo "❌ Coverage decreased from $MASTER_COV% to $PR_COV%"
+            exit 1
+          else
+            echo "✅ Coverage maintained or improved: $PR_COV% (was $MASTER_COV%)"
+          fi
+
+      - name: Comment PR with coverage
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            const prCoverage = '${{ steps.pr-coverage.outputs.coverage }}';
+            const masterCoverage = '${{ steps.master-coverage.outputs.master_coverage }}';
+            
+            let message = `## 📊 Test Coverage Report\n\n`;
+            message += `- **PR Coverage:** ${prCoverage}%\n`;
+            
+            if (masterCoverage !== '0') {
+              message += `- **Master Coverage:** ${masterCoverage}%\n`;
+              const diff = (parseFloat(prCoverage) - parseFloat(masterCoverage)).toFixed(2);
+              const emoji = diff >= 0 ? '✅' : '❌';
+              message += `- **Change:** ${emoji} ${diff > 0 ? '+' : ''}${diff}%\n`;
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-coverage-report
+          path: coverage/
+          retention-days: 30

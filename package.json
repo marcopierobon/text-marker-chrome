@@ -19,6 +19,8 @@
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:failed": "playwright test --last-failed",
     "lint": "eslint . --ext .ts,.tsx",
+    "format:check": "prettier --check \"**/*.{ts,js,json,md}\"",
+    "format:write": "prettier --write \"**/*.{ts,js,json,md}\"",
     "prebuild": "npm run type-check",
     "precommit": "./pre-commit-check.sh"
   },
