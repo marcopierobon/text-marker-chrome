@@ -20,56 +20,174 @@ test.describe("Floating Window E2E Tests", () => {
         runtime: {
           getURL: (path: string) => `chrome-extension://test/${path}`,
         },
+        windows: {
+          create: () => Promise.resolve({ id: 1, type: "normal" }),
+          getCurrent: () => Promise.resolve({ id: 1, type: "normal" }),
+        },
       };
     });
   });
 
-  test("should have floating window toggle element in HTML", async ({
-    page,
+  test("should create floating window when button is clicked", async ({
+    context,
   }) => {
-    await page.goto(`file://${join(__dirname, "../../popup/popup.html")}`);
+    // Mock chrome APIs
+    await context.addInitScript(() => {
+      let windowCreateCalled = false;
+      (window as any).chrome = {
+        storage: {
+          sync: {
+            get: () =>
+              Promise.resolve({
+                symbolMarkerConfig: {
+                  groups: [],
+                  urlFilters: { mode: "blacklist", patterns: [] },
+                },
+              }),
+            set: () => Promise.resolve(),
+          },
+          local: {
+            get: () => Promise.resolve({}),
+            set: () => Promise.resolve(),
+          },
+        },
+        runtime: {
+          getURL: (path: string) => `file://${path}`,
+        },
+        system: {
+          display: {
+            getInfo: () => Promise.resolve([{ workArea: { height: 1080 } }]),
+          },
+        },
+        windows: {
+          create: (options: any) => {
+            console.log("chrome.windows.create called with:", options);
+            windowCreateCalled = true;
+            (window as any).__windowCreateOptions = options;
+            return Promise.resolve({ id: 2, type: options.type });
+          },
+          getCurrent: () => {
+            console.log("chrome.windows.getCurrent called");
+            return Promise.resolve({ id: 1, type: "popup" });
+          },
+        },
+        tabs: {
+          query: () => Promise.resolve([{ id: 100 }]),
+          update: () => Promise.resolve(),
+        },
+        extension: {
+          getViews: () => [],
+        },
+      };
+      (window as any).__getWindowCreateCalled = () => windowCreateCalled;
+    });
 
-    // Check if floating window toggle exists in DOM
-    const toggle = await page.locator("#floating-window-toggle");
-    await expect(toggle).toHaveCount(1);
+    const page = await context.newPage();
+    page.on("console", (msg) => console.log("PAGE LOG:", msg.text()));
+
+    await page.goto(`file://${join(__dirname, "../../dist/popup/popup.html")}`);
+    await page.waitForLoadState("domcontentloaded");
+
+    // Navigate to Settings tab
+    await page.click('[data-tab="import-export"]');
+    await page.waitForTimeout(500);
+
+    // Click the floating window button
+    await page.click("#floating-window-btn");
+    await page.waitForTimeout(1000);
+
+    // Check if chrome.windows.create was called
+    const wasCreateCalled = await page.evaluate(() =>
+      (window as any).__getWindowCreateCalled(),
+    );
+    expect(wasCreateCalled).toBe(true);
+
+    // Verify it was called with type "normal" and responsive height
+    const createOptions = await page.evaluate(
+      () => (window as any).__windowCreateOptions,
+    );
+    expect(createOptions.type).toBe("normal");
+    expect(createOptions.width).toBe(800);
+    expect(createOptions.height).toBeGreaterThanOrEqual(600);
   });
 
-  test("should have floating window toggle with correct attributes", async ({
-    page,
+  test("should create window with responsive height based on screen size", async ({
+    context,
   }) => {
-    await page.goto(`file://${join(__dirname, "../../popup/popup.html")}`);
+    await context.addInitScript(() => {
+      let windowCreateCalled = false;
+      (window as any).chrome = {
+        storage: {
+          sync: {
+            get: () => Promise.resolve({ symbolMarkerConfig: { groups: [] } }),
+            set: () => Promise.resolve(),
+          },
+          local: {
+            get: () => Promise.resolve({}),
+            set: () => Promise.resolve(),
+          },
+        },
+        runtime: {
+          getURL: (path: string) => `file://${path}`,
+        },
+        system: {
+          display: {
+            getInfo: () => Promise.resolve([{ workArea: { height: 1200 } }]),
+          },
+        },
+        windows: {
+          create: (options: any) => {
+            windowCreateCalled = true;
+            (window as any).__windowCreateOptions = options;
+            return Promise.resolve({ id: 2, type: options.type });
+          },
+          getCurrent: () => Promise.resolve({ id: 1, type: "popup" }),
+        },
+        tabs: {
+          query: () => Promise.resolve([{ id: 100 }]),
+          update: () => Promise.resolve(),
+        },
+        extension: {
+          getViews: () => [],
+        },
+      };
+      (window as any).__getWindowCreateCalled = () => windowCreateCalled;
+    });
 
-    // Check toggle has correct type and id
-    const toggle = await page.locator("#floating-window-toggle");
-    await expect(toggle).toHaveAttribute("type", "checkbox");
-    await expect(toggle).toHaveAttribute("id", "floating-window-toggle");
-  });
+    const page = await context.newPage();
+    await page.goto(`file://${join(__dirname, "../../dist/popup/popup.html")}`);
+    await page.waitForLoadState("domcontentloaded");
 
-  test("should have Window Settings heading in HTML", async ({ page }) => {
-    await page.goto(`file://${join(__dirname, "../../popup/popup.html")}`);
+    // Navigate to Settings tab and click button
+    await page.click('[data-tab="import-export"]');
+    await page.waitForTimeout(500);
+    await page.click("#floating-window-btn");
+    await page.waitForTimeout(1000);
 
-    // Check for Window Settings heading
-    const content = await page.content();
-    expect(content).toContain("Window Settings");
-    expect(content).toContain("Floating Window Mode");
-  });
-
-  test("should have toggle inside Import/Export tab", async ({ page }) => {
-    await page.goto(`file://${join(__dirname, "../../popup/popup.html")}`);
-
-    // Check toggle is in import-export tab
-    const toggle = await page.locator(
-      "#import-export-tab #floating-window-toggle",
+    // Verify window was created with 90% of screen height (1200 * 0.9 = 1080)
+    const createOptions = await page.evaluate(
+      () => (window as any).__windowCreateOptions,
     );
-    await expect(toggle).toHaveCount(1);
+    expect(createOptions.height).toBe(1080);
   });
 
-  test("should have help text for floating window", async ({ page }) => {
-    await page.goto(`file://${join(__dirname, "../../popup/popup.html")}`);
+  test("should show floating window button in Settings tab", async ({
+    context,
+  }) => {
+    const page = await context.newPage();
+    await page.goto(`file://${join(__dirname, "../../dist/popup/popup.html")}`);
+    await page.waitForLoadState("domcontentloaded");
 
-    const content = await page.content();
-    expect(content).toContain(
-      "Open configuration in a separate floating window",
-    );
+    // Navigate to Settings tab
+    await page.click('[data-tab="import-export"]');
+    await page.waitForTimeout(500);
+
+    // Verify button exists
+    const button = page.locator("#floating-window-btn");
+    await expect(button).toBeVisible();
+
+    // Verify button text
+    const buttonText = await button.textContent();
+    expect(buttonText).toContain("Open as Floating Window");
   });
 });

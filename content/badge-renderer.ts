@@ -16,6 +16,36 @@ export class BadgeRenderer {
   }
 
   /**
+   * Calculate brightness of a color (0-255)
+   * @param color - Hex color string (e.g., "#FF0000")
+   * @returns Brightness value (0-255)
+   */
+  private getColorBrightness(color: string): number {
+    // Remove # if present
+    const hex = color.replace("#", "");
+
+    // Parse RGB values
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+
+    // Calculate perceived brightness using standard formula
+    return (r * 299 + g * 587 + b * 114) / 1000;
+  }
+
+  /**
+   * Get contrasting background color based on text color
+   * @param textColor - The text color
+   * @returns "white" for dark text, "black" for light text
+   */
+  private getContrastingBackground(textColor: string): string {
+    const brightness = this.getColorBrightness(textColor);
+    // If brightness > 128, color is light, use black background
+    // If brightness <= 128, color is dark, use white background
+    return brightness > 128 ? "#000000" : "#ffffff";
+  }
+
+  /**
    * Create a badge for a symbol with its groups
    * @param symbol - The stock symbol
    * @param groups - Array of group objects
@@ -162,6 +192,17 @@ export class BadgeRenderer {
     label.style.fontSize = `${ICON_SIZE}px`;
     label.style.fontWeight = "bold";
     label.style.color = color;
+
+    const bgColor = this.getContrastingBackground(color);
+    const brightness = this.getColorBrightness(color);
+    console.log(
+      `[BadgeRenderer] Label: ${categoryName}, Color: ${color}, Brightness: ${brightness}, BG: ${bgColor}`,
+    );
+
+    label.style.setProperty("background-color", bgColor, "important");
+    label.style.setProperty("padding", "2px 6px", "important");
+    label.style.setProperty("border-radius", "3px", "important");
+    label.style.setProperty("display", "inline-block", "important");
     label.style.whiteSpace = "nowrap";
     label.style.lineHeight = "1";
     label.style.verticalAlign = "middle";
@@ -188,13 +229,19 @@ export class BadgeRenderer {
       button.textContent = `+${group.categories.length}`;
     }
 
+    const bgColor = this.getContrastingBackground(group.groupColor);
+    const brightness = this.getColorBrightness(group.groupColor);
+    console.log(
+      `[BadgeRenderer] Button: ${button.textContent}, Color: ${group.groupColor}, Brightness: ${brightness}, BG: ${bgColor}`,
+    );
+
     button.style.fontSize = `${ICON_SIZE}px`;
     button.style.fontWeight = "bold";
     button.style.color = group.groupColor;
-    button.style.backgroundColor = "transparent";
-    button.style.border = `1px solid ${group.groupColor}`;
-    button.style.borderRadius = "3px";
-    button.style.padding = "0 4px";
+    button.style.setProperty("background-color", bgColor, "important");
+    button.style.border = "none";
+    button.style.setProperty("border-radius", "3px", "important");
+    button.style.setProperty("padding", "2px 6px", "important");
     button.style.cursor = "pointer";
     button.style.lineHeight = "1";
     button.style.verticalAlign = "middle";
@@ -320,12 +367,22 @@ export class BadgeRenderer {
         tooltip.appendChild(separator);
       }
 
-      // Add category name
+      // Add category name with contrasting background
       const categorySpan = document.createElement("span");
       categorySpan.textContent = categoryName;
       categorySpan.style.color = group.groupColor;
+
+      const bgColor = this.getContrastingBackground(group.groupColor);
+      const brightness = this.getColorBrightness(group.groupColor);
+      console.log(
+        `[BadgeRenderer] Category: ${categoryName}, Color: ${group.groupColor}, Brightness: ${brightness}, BG: ${bgColor}`,
+      );
+
+      categorySpan.style.backgroundColor = bgColor;
       categorySpan.style.fontWeight = "bold";
       categorySpan.style.fontSize = `${ICON_SIZE}px`;
+      categorySpan.style.padding = "2px 6px";
+      categorySpan.style.borderRadius = "3px";
       tooltip.appendChild(categorySpan);
 
       // Add category URL button if available

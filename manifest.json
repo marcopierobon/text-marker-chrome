@@ -3,7 +3,8 @@
   "name": "Text Marker",
   "version": "1.0",
   "description": "Highlights text patterns on web pages with customizable badges and tooltips",
-  "permissions": ["storage", "activeTab"],
+  "permissions": ["storage", "activeTab", "system.display", "scripting"],
+  "optional_host_permissions": ["<all_urls>"],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -20,7 +21,6 @@
   "background": {
     "service_worker": "background.js"
   },
-  "host_permissions": ["<all_urls>"],
   "content_scripts": [
     {
       "matches": ["<all_urls>"],

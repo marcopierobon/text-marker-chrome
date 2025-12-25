@@ -18,18 +18,87 @@ let configuration: SymbolMarkerConfig = {
 let currentEditingCategory: string | null = null;
 let currentGroupIndex: number = -1;
 
+// Permissions management functions
+async function updatePermissionsStatus(): Promise<void> {
+  const hasPermissions = await chrome.permissions.contains({
+    origins: ["<all_urls>"],
+  });
+
+  const messageEl = document.getElementById("permissions-message")!;
+  const requestBtn = document.getElementById("request-permissions-btn")!;
+  const revokeBtn = document.getElementById("revoke-permissions-btn")!;
+
+  if (hasPermissions) {
+    messageEl.textContent =
+      "✅ Automatic Mode is enabled - extension runs on all websites automatically.";
+    messageEl.style.color = "#28a745";
+    requestBtn.style.display = "none";
+    revokeBtn.style.display = "inline-block";
+  } else {
+    messageEl.textContent =
+      "⚠️ Manual Mode is active - click the extension icon on each page to activate.";
+    messageEl.style.color = "#ffc107";
+    requestBtn.style.display = "inline-block";
+    revokeBtn.style.display = "none";
+  }
+}
+
+async function requestHostPermissions(): Promise<void> {
+  try {
+    const granted = await chrome.permissions.request({
+      origins: ["<all_urls>"],
+    });
+
+    if (granted) {
+      console.log("✅ Host permissions granted");
+      await updatePermissionsStatus();
+      alert(
+        "Automatic Mode enabled! The extension will now run automatically on all websites. Please reload any open tabs for changes to take effect.",
+      );
+    } else {
+      console.log("❌ Host permissions denied");
+      alert("Permission denied. The extension will continue in Manual Mode.");
+    }
+  } catch (error) {
+    console.error("Error requesting permissions:", error);
+    alert("Failed to request permissions. Please try again.");
+  }
+}
+
+async function revokeHostPermissions(): Promise<void> {
+  try {
+    const removed = await chrome.permissions.remove({
+      origins: ["<all_urls>"],
+    });
+
+    if (removed) {
+      console.log("✅ Host permissions revoked");
+      await updatePermissionsStatus();
+      alert(
+        "Automatic Mode disabled. You'll need to click the extension icon on each page to activate it.",
+      );
+    } else {
+      console.log("❌ Failed to revoke permissions");
+      alert("Failed to disable Automatic Mode. Please try again.");
+    }
+  } catch (error) {
+    console.error("Error revoking permissions:", error);
+    alert("Failed to revoke permissions. Please try again.");
+  }
+}
+
 // Initialize
 document.addEventListener("DOMContentLoaded", async () => {
   console.log("🚀 Popup initializing...");
-  
+
   // Check what type of window we're in
   const currentWindow = await chrome.windows.getCurrent();
   console.log("🪟 Window type on open:", currentWindow.type);
-  
+
   await loadConfiguration();
   console.log("📋 Configuration loaded:", {
     floatingWindow: configuration.floatingWindow,
-    groupCount: configuration.groups.length
+    groupCount: configuration.groups.length,
   });
   setupEventListeners();
   await checkAndConvertToFloatingWindow();
@@ -62,11 +131,6 @@ async function loadConfiguration(): Promise<void> {
       configuration.urlFilters = { mode: "blacklist", patterns: [] };
     }
 
-    // Ensure floatingWindow has a default value
-    if (configuration.floatingWindow === undefined) {
-      configuration.floatingWindow = false;
-    }
-
     renderGroups();
     renderURLPatterns();
 
@@ -75,14 +139,6 @@ async function loadConfiguration(): Promise<void> {
       `input[name="filter-mode"][value="${configuration.urlFilters.mode}"]`,
     );
     if (modeRadio) modeRadio.checked = true;
-
-    // Set floating window toggle
-    const floatingToggle = document.getElementById(
-      "floating-window-toggle",
-    ) as HTMLInputElement;
-    if (floatingToggle) {
-      floatingToggle.checked = configuration.floatingWindow || false;
-    }
   } catch (error) {
     console.error("Error loading configuration:", error);
     showToast("Error loading configuration", "error");
@@ -210,10 +266,21 @@ function setupEventListeners(): void {
   // URL Filter listeners
   setupURLFilterListeners();
 
-  // Floating window toggle
+  // Floating window button
   document
-    .getElementById("floating-window-toggle")!
-    .addEventListener("change", (e) => handleFloatingWindowToggle(e as Event));
+    .getElementById("floating-window-btn")!
+    .addEventListener("click", () => handleFloatingWindowClick());
+
+  // Permissions buttons
+  document
+    .getElementById("request-permissions-btn")!
+    .addEventListener("click", () => requestHostPermissions());
+  document
+    .getElementById("revoke-permissions-btn")!
+    .addEventListener("click", () => revokeHostPermissions());
+
+  // Check permissions status on load
+  updatePermissionsStatus();
 
   // Close modals on outside click
   document.getElementById("group-modal")!.addEventListener("click", (e) => {
@@ -713,93 +780,69 @@ function getDefaultConfiguration(): SymbolMarkerConfig {
 }
 
 // Floating Window Functions
-async function handleFloatingWindowToggle(event: Event): Promise<void> {
-  const checkbox = event.target as HTMLInputElement;
-  const isEnabled = checkbox.checked;
-
-  configuration.floatingWindow = isEnabled;
-  await saveConfigurationToStorage();
-
-  if (isEnabled) {
-    // Try to convert current window to floating window
-    const success = await convertToFloatingWindow();
-    if (!success) {
-      // If conversion failed, show message that it will apply on next open
-      showToast(
-        "Floating window mode enabled. Will open as floating window next time.",
-        "success",
-      );
-    }
-  } else {
-    showToast(
-      "Floating window mode disabled. Will open normally next time.",
-      "success",
-    );
+async function handleFloatingWindowClick(): Promise<void> {
+  // Create a floating window when button is clicked
+  const success = await convertToFloatingWindow();
+  if (!success) {
+    showToast("Error creating floating window", "error");
   }
+  // Note: window.close() is called in convertToFloatingWindow if successful
 }
 
 async function checkAndConvertToFloatingWindow(): Promise<void> {
-  // Only convert if floating window is enabled and we're in a popup (not already a normal window)
-  if (configuration.floatingWindow) {
-    // Check if we're in a popup or already in a normal window
-    const currentWindow = await chrome.windows.getCurrent();
-    
-    console.log("Floating window check:", {
-      floatingWindowEnabled: configuration.floatingWindow,
-      currentWindowType: currentWindow.type,
-      willConvert: currentWindow.type === "popup"
-    });
-
-    // If we're in a popup type, convert to persistent floating window
-    // If already in a normal window, we're already in floating mode - do nothing
-    if (currentWindow.type === "popup") {
-      await convertToFloatingWindow();
-    }
-  }
+  // Don't auto-convert - this was causing issues with windows closing every time
+  // The floating window feature is now disabled for auto-conversion
+  // Users can manually toggle it, but it won't auto-convert on load
+  console.log("Floating window auto-conversion disabled");
+  return;
 }
 
 async function convertToFloatingWindow(): Promise<boolean> {
   console.log("🔄 convertToFloatingWindow() called");
   try {
-    // Get current window to check its type
-    const currentWindow = await chrome.windows.getCurrent();
-    console.log("Current window type:", currentWindow.type);
+    // Get screen dimensions to make height responsive
+    const displays = await chrome.system.display.getInfo();
+    const primaryDisplay = displays[0];
+    const availableHeight = primaryDisplay.workArea.height;
 
-    // CRITICAL: Only proceed if we're in a popup, not a normal browser window
-    // This prevents closing the entire browser window with all tabs
-    if (currentWindow.type !== "popup") {
-      console.log("❌ Not converting - not in a popup window");
-      // Can't convert now, but preference is saved for next time
-      return false;
-    }
-    
-    console.log("✅ In popup window - proceeding with conversion");
+    // Use 90% of available height, or at least 600px
+    const windowHeight = Math.max(600, Math.floor(availableHeight * 0.9));
 
-    // Create a persistent floating window (normal type stays open when clicking away)
+    console.log("Screen info:", {
+      availableHeight,
+      windowHeight,
+    });
+
+    // Create a new persistent floating window with responsive height
     const newWindow = await chrome.windows.create({
       url: chrome.runtime.getURL("popup/popup.html"),
       type: "normal", // Normal window type persists and doesn't auto-close
       width: 800,
-      height: 600,
+      height: windowHeight,
       focused: true,
-      state: "normal", // Ensure it's not minimized/maximized
+      state: "normal",
     });
-    
+
     if (newWindow) {
-      console.log("Created floating window:", {
+      console.log("✅ Created floating window:", {
         windowId: newWindow.id,
         windowType: newWindow.type,
-        state: newWindow.state
+        state: newWindow.state,
+        height: windowHeight,
       });
     }
 
-    // Close the current popup window (safe because we verified it's a popup)
-    if (currentWindow.id) {
-      await chrome.windows.remove(currentWindow.id);
-    }
-    
+    // Switch focus to the current tab to make popup lose focus and close naturally
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]?.id) {
+        chrome.tabs.update(tabs[0].id, { active: true });
+        console.log("Switched focus to current tab");
+      }
+    });
+
     return true;
-  } catch {
+  } catch (error) {
+    console.error("Error creating floating window:", error);
     showToast("Error creating floating window", "error");
     return false;
   }

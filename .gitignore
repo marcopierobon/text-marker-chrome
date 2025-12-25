@@ -31,3 +31,7 @@ npm-debug.log*
 *.tmp
 *.temp
 test-results/.last-run.json
+
+
+*.pem
+*.crx

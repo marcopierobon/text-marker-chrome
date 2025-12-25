@@ -25,6 +25,51 @@ const log: Logger = {
 
 log.info("Background service worker started");
 
+// Check if we have host permissions
+async function hasHostPermissions(): Promise<boolean> {
+  return chrome.permissions.contains({
+    origins: ["<all_urls>"],
+  });
+}
+
+// Inject content script manually when user clicks extension icon (if no host permissions)
+chrome.action.onClicked.addListener(async (tab) => {
+  if (!tab.id) return;
+
+  // If we have host permissions, content script auto-injects, so just open popup
+  const hasPermissions = await hasHostPermissions();
+  if (hasPermissions) {
+    log.info("Host permissions granted, content script auto-injected");
+    return; // Popup will open automatically
+  }
+
+  // No host permissions - manually inject content script
+  try {
+    // Check if content script is already injected
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        return typeof (window as any).__textMarkerInjected !== "undefined";
+      },
+    });
+
+    if (results[0]?.result) {
+      log.info("Content script already injected, opening popup");
+      return; // Already injected, popup will open automatically
+    }
+
+    // Inject content script
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ["content/content.js"],
+    });
+
+    log.info("Content script manually injected into tab", tab.id);
+  } catch (error) {
+    log.error("Failed to inject content script:", error);
+  }
+});
+
 // Listen for extension installation or update
 chrome.runtime.onInstalled.addListener(
   (details: chrome.runtime.InstalledDetails) => {

@@ -11,12 +11,15 @@
         <header>
             <h1>🎯 Text Marker Configuration</h1>
             <p class="subtitle">Configure text pattern groups and categories</p>
+            <p class="coffee-link">
+                ☕ Enjoying this extension? <a href="https://buymeacoffee.com/pierobon" target="_blank" rel="noopener noreferrer">Buy me a coffee</a> to fuel more features!
+            </p>
         </header>
 
         <div class="tabs">
             <button class="tab-btn active" data-tab="groups">Groups</button>
             <button class="tab-btn" data-tab="url-filters">URL Filters</button>
-            <button class="tab-btn" data-tab="import-export">Import/Export</button>
+            <button class="tab-btn" data-tab="import-export">Settings</button>
         </div>
 
         <div class="tab-content active" id="groups-tab">
@@ -76,15 +79,29 @@
 
         <div class="tab-content" id="import-export-tab">
             <div class="import-export-section">
-                <h3>Window Settings</h3>
+                <h3>Automatic Mode</h3>
                 <div class="form-group">
-                    <label class="toggle-label">
-                        <input type="checkbox" id="floating-window-toggle">
-                        <span class="toggle-text">
-                            <strong>Floating Window Mode</strong>
-                            <small class="help-text">Open configuration in a separate floating window</small>
-                        </span>
-                    </label>
+                    <div id="permissions-status" class="permissions-status">
+                        <p id="permissions-message"></p>
+                        <button class="btn btn-primary" id="request-permissions-btn" style="display: none;">
+                            <span class="icon">🔓</span> Enable Automatic Mode
+                        </button>
+                        <button class="btn btn-danger" id="revoke-permissions-btn" style="display: none;">
+                            <span class="icon">🔒</span> Disable Automatic Mode
+                        </button>
+                    </div>
+                    <p class="help-text">
+                        <strong>Automatic Mode:</strong> Extension runs automatically on all websites.<br>
+                        <strong>Manual Mode:</strong> Click the extension icon on each page to activate.
+                    </p>
+                </div>
+
+                <h3 style="margin-top: 2rem;">Window Settings</h3>
+                <div class="form-group">
+                    <button class="btn btn-secondary" id="floating-window-btn">
+                        <span class="icon">🪟</span> Open as Floating Window
+                    </button>
+                    <p class="help-text">Opens the configuration in a persistent floating window (800x600) that stays open when you click away.</p>
                 </div>
 
                 <h3 style="margin-top: 2rem;">Export Configuration</h3>

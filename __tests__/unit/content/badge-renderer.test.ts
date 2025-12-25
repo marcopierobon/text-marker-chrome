@@ -508,4 +508,146 @@ describe("BadgeRenderer", () => {
       expect(parent.style.zIndex).toBeTruthy();
     });
   });
+
+  describe("color brightness and contrast", () => {
+    describe("getColorBrightness", () => {
+      test("calculates brightness for pure black", () => {
+        const brightness = (renderer as any).getColorBrightness("#000000");
+        expect(brightness).toBe(0);
+      });
+
+      test("calculates brightness for pure white", () => {
+        const brightness = (renderer as any).getColorBrightness("#ffffff");
+        expect(brightness).toBe(255);
+      });
+
+      test("calculates brightness for pure red", () => {
+        const brightness = (renderer as any).getColorBrightness("#ff0000");
+        expect(brightness).toBeCloseTo(76.245, 1);
+      });
+
+      test("calculates brightness for pure green", () => {
+        const brightness = (renderer as any).getColorBrightness("#00ff00");
+        expect(brightness).toBeCloseTo(149.685, 1);
+      });
+
+      test("calculates brightness for pure blue", () => {
+        const brightness = (renderer as any).getColorBrightness("#0000ff");
+        expect(brightness).toBeCloseTo(29.07, 1);
+      });
+
+      test("calculates brightness for yellow", () => {
+        const brightness = (renderer as any).getColorBrightness("#ffff00");
+        expect(brightness).toBeCloseTo(225.93, 1);
+      });
+
+      test("handles colors without # prefix", () => {
+        const brightness = (renderer as any).getColorBrightness("ff0000");
+        expect(brightness).toBeCloseTo(76.245, 1);
+      });
+
+      test("calculates brightness for gray", () => {
+        const brightness = (renderer as any).getColorBrightness("#808080");
+        expect(brightness).toBe(128);
+      });
+    });
+
+    describe("getContrastingBackground", () => {
+      test("returns white background for black text", () => {
+        const bg = (renderer as any).getContrastingBackground("#000000");
+        expect(bg).toBe("#ffffff");
+      });
+
+      test("returns black background for white text", () => {
+        const bg = (renderer as any).getContrastingBackground("#ffffff");
+        expect(bg).toBe("#000000");
+      });
+
+      test("returns white background for dark blue text", () => {
+        const bg = (renderer as any).getContrastingBackground("#0000ff");
+        expect(bg).toBe("#ffffff");
+      });
+
+      test("returns black background for yellow text", () => {
+        const bg = (renderer as any).getContrastingBackground("#ffff00");
+        expect(bg).toBe("#000000");
+      });
+
+      test("returns white background for dark red text", () => {
+        const bg = (renderer as any).getContrastingBackground("#ff0000");
+        expect(bg).toBe("#ffffff");
+      });
+
+      test("returns black background for light green text", () => {
+        const bg = (renderer as any).getContrastingBackground("#00ff00");
+        expect(bg).toBe("#000000");
+      });
+
+      test("returns white background for gray at threshold", () => {
+        const bg = (renderer as any).getContrastingBackground("#808080");
+        expect(bg).toBe("#ffffff");
+      });
+
+      test("returns black background for light gray above threshold", () => {
+        const bg = (renderer as any).getContrastingBackground("#818181");
+        expect(bg).toBe("#000000");
+      });
+    });
+
+    describe("category rendering with contrasting backgrounds", () => {
+      test("applies white background to dark colored categories", () => {
+        const group = {
+          groupName: "Test",
+          groupIcon: "https://example.com/icon.png",
+          groupColor: "#000000",
+          categories: ["Dark Category"],
+        };
+
+        const tooltip = renderer.createTooltip(group);
+        const categorySpan = Array.from(tooltip.children).find(
+          (child) => child.textContent === "Dark Category",
+        ) as HTMLElement;
+
+        expect(categorySpan).toBeTruthy();
+        expect(categorySpan.style.backgroundColor).toBe("rgb(255, 255, 255)");
+        expect(categorySpan.style.color).toBe("rgb(0, 0, 0)");
+      });
+
+      test("applies black background to light colored categories", () => {
+        const group = {
+          groupName: "Test",
+          groupIcon: "https://example.com/icon.png",
+          groupColor: "#ffff00",
+          categories: ["Light Category"],
+        };
+
+        const tooltip = renderer.createTooltip(group);
+        const categorySpan = Array.from(tooltip.children).find(
+          (child) => child.textContent === "Light Category",
+        ) as HTMLElement;
+
+        expect(categorySpan).toBeTruthy();
+        expect(categorySpan.style.backgroundColor).toBe("rgb(0, 0, 0)");
+        expect(categorySpan.style.color).toBe("rgb(255, 255, 0)");
+      });
+
+      test("applies padding and border radius to category spans", () => {
+        const group = {
+          groupName: "Test",
+          groupIcon: "https://example.com/icon.png",
+          groupColor: "#ff0000",
+          categories: ["Styled Category"],
+        };
+
+        const tooltip = renderer.createTooltip(group);
+        const categorySpan = Array.from(tooltip.children).find(
+          (child) => child.textContent === "Styled Category",
+        ) as HTMLElement;
+
+        expect(categorySpan).toBeTruthy();
+        expect(categorySpan.style.padding).toBe("2px 6px");
+        expect(categorySpan.style.borderRadius).toBe("3px");
+      });
+    });
+  });
 });
