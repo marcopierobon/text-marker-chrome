@@ -1,0 +1,9 @@
+# Code Owners for text-marker-extension
+# These owners will be automatically requested for review when someone opens a PR
+
+# Default owner for everything in the repo
+* @marcopierobon
+
+# Specific paths (examples - customize as needed)
+# /.github/workflows/ @marcopierobon
+# /docs/ @marcopierobon
