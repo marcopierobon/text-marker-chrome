@@ -11,6 +11,7 @@ import { debounce } from "../utils/debounce";
 import { createLogger } from "../shared/logger";
 import type { SymbolMarkerConfig, UrlPattern } from "../types/symbol-config";
 import type { ChromeMessage, SendResponse } from "../types/chrome-extension";
+import { runtime } from "../shared/browser-api";
 
 const log = createLogger("ContentScript");
 
@@ -223,7 +224,7 @@ class ContentScript {
    * Set up message listener for configuration reload
    */
   setupMessageListener(): void {
-    chrome.runtime.onMessage.addListener(
+    runtime.onMessage.addListener(
       (
         request: ChromeMessage,
         _sender: chrome.runtime.MessageSender,

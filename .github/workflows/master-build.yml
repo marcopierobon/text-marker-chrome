@@ -133,15 +133,32 @@ jobs:
           mv manifest.json.tmp manifest.json
           echo "Updated manifest.json to version $NEW_VERSION"
 
-      - name: Rebuild with new version
-        run: npm run build
+      - name: Update manifest.firefox.json version
+        run: |
+          NEW_VERSION=${{ steps.version.outputs.version }}
+          jq --arg version "$NEW_VERSION" '.version = $version' manifest.firefox.json > manifest.firefox.json.tmp
+          mv manifest.firefox.json.tmp manifest.firefox.json
+          echo "Updated manifest.firefox.json to version $NEW_VERSION"
 
-      - name: Create ZIP archive
+      - name: Build Chrome extension
+        run: npm run build:chrome
+
+      - name: Build Firefox extension
+        run: npm run build:firefox
+
+      - name: Create Chrome ZIP archive
         run: |
           cd dist
-          zip -r ../text-marker-extension-${{ steps.version.outputs.version }}.zip .
+          zip -r ../text-marker-chrome-${{ steps.version.outputs.version }}.zip .
           cd ..
-          echo "Created text-marker-extension-${{ steps.version.outputs.version }}.zip"
+          echo "Created text-marker-chrome-${{ steps.version.outputs.version }}.zip"
+
+      - name: Create Firefox ZIP archive
+        run: |
+          cd dist-firefox
+          zip -r ../text-marker-firefox-${{ steps.version.outputs.version }}.zip .
+          cd ..
+          echo "Created text-marker-firefox-${{ steps.version.outputs.version }}.zip"
 
       - name: Create release notes
         id: release-notes
@@ -155,11 +172,20 @@ jobs:
           - **Commit:** ${{ github.sha }}
           
           ### 📦 Installation
-          1. Download `text-marker-extension-${{ steps.version.outputs.version }}.zip`
+          
+          **Chrome:**
+          1. Download `text-marker-chrome-${{ steps.version.outputs.version }}.zip`
           2. Extract the ZIP file
           3. Open Chrome and go to `chrome://extensions/`
           4. Enable "Developer mode"
           5. Click "Load unpacked" and select the extracted folder
+          
+          **Firefox:**
+          1. Download `text-marker-firefox-${{ steps.version.outputs.version }}.zip`
+          2. Extract the ZIP file
+          3. Open Firefox and go to `about:debugging#/runtime/this-firefox`
+          4. Click "Load Temporary Add-on"
+          5. Select the manifest.json file from the extracted folder
           
           ### 📝 Changes
           See commit history for detailed changes.
@@ -181,24 +207,31 @@ jobs:
           name: Release v${{ steps.version.outputs.version }}
           body_path: release-notes.md
           files: |
-            text-marker-extension-${{ steps.version.outputs.version }}.zip
-            dist/**/*
+            text-marker-chrome-${{ steps.version.outputs.version }}.zip
+            text-marker-firefox-${{ steps.version.outputs.version }}.zip
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload dist folder as artifact
+      - name: Upload Chrome dist folder as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: extension-dist-v${{ steps.version.outputs.version }}
+          name: chrome-dist-v${{ steps.version.outputs.version }}
           path: dist/
+          retention-days: 90
+
+      - name: Upload Firefox dist folder as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-dist-v${{ steps.version.outputs.version }}
+          path: dist-firefox/
           retention-days: 90
 
       - name: Commit version updates
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package.json manifest.json
+          git add package.json manifest.json manifest.firefox.json
           git commit -m "chore: bump version to ${{ steps.version.outputs.version }} [skip ci]" || echo "No changes to commit"
           git push origin master || echo "No changes to push"

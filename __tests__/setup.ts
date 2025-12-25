@@ -1,4 +1,9 @@
 // Test setup to suppress expected console errors
+import { setupChromeMock } from "./helpers/chrome-mock";
+
+// Setup Chrome mock globally before any tests run
+setupChromeMock();
+
 const originalConsole = {
   error: console.error,
   warn: console.warn,

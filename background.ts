@@ -2,6 +2,7 @@
 // Handles extension lifecycle, message routing, and state management
 
 import type { ChromeMessage, SendResponse } from "./types/chrome-extension";
+import { permissions, action, scripting, runtime, storage, tabs } from "./shared/browser-api";
 
 const DEBUG_MODE = false;
 
@@ -27,13 +28,13 @@ log.info("Background service worker started");
 
 // Check if we have host permissions
 async function hasHostPermissions(): Promise<boolean> {
-  return chrome.permissions.contains({
+  return permissions.contains({
     origins: ["<all_urls>"],
   });
 }
 
 // Inject content script manually when user clicks extension icon (if no host permissions)
-chrome.action.onClicked.addListener(async (tab) => {
+action.onClicked.addListener(async (tab) => {
   if (!tab.id) return;
 
   // If we have host permissions, content script auto-injects, so just open popup
@@ -46,7 +47,7 @@ chrome.action.onClicked.addListener(async (tab) => {
   // No host permissions - manually inject content script
   try {
     // Check if content script is already injected
-    const results = await chrome.scripting.executeScript({
+    const results = await scripting.executeScript({
       target: { tabId: tab.id },
       func: () => {
         return typeof (window as any).__textMarkerInjected !== "undefined";
@@ -59,7 +60,7 @@ chrome.action.onClicked.addListener(async (tab) => {
     }
 
     // Inject content script
-    await chrome.scripting.executeScript({
+    await scripting.executeScript({
       target: { tabId: tab.id },
       files: ["content/content.js"],
     });
@@ -71,7 +72,7 @@ chrome.action.onClicked.addListener(async (tab) => {
 });
 
 // Listen for extension installation or update
-chrome.runtime.onInstalled.addListener(
+runtime.onInstalled.addListener(
   (details: chrome.runtime.InstalledDetails) => {
     if (details.reason === "install") {
       log.info("Extension installed");
@@ -79,7 +80,7 @@ chrome.runtime.onInstalled.addListener(
     } else if (details.reason === "update") {
       log.info(
         "Extension updated to version",
-        chrome.runtime.getManifest().version,
+        runtime.getManifest().version,
       );
       // Could handle data migration here if needed
     }
@@ -87,7 +88,7 @@ chrome.runtime.onInstalled.addListener(
 );
 
 // Listen for messages from content scripts or popup
-chrome.runtime.onMessage.addListener(
+runtime.onMessage.addListener(
   (
     request: ChromeMessage,
     _sender: chrome.runtime.MessageSender,
@@ -99,17 +100,17 @@ chrome.runtime.onMessage.addListener(
     switch (request.action) {
       case "getConfiguration":
         // Fetch configuration from storage and send to requester
-        chrome.storage.sync.get(["symbolMarkerConfig"], (result) => {
+        storage.sync.get(["symbolMarkerConfig"], (result) => {
           sendResponse({ configuration: result.symbolMarkerConfig });
         });
         return true; // Keep message channel open for async response
 
       case "notifyConfigUpdate":
         // Notify all content scripts that configuration has been updated
-        chrome.tabs.query({}, (tabs) => {
-          tabs.forEach((tab) => {
+        tabs.query({}, (tabsList) => {
+          tabsList.forEach((tab) => {
             if (tab.id) {
-              chrome.tabs
+              tabs
                 .sendMessage(tab.id, {
                   action: "reloadConfiguration",
                 })
@@ -131,7 +132,7 @@ chrome.runtime.onMessage.addListener(
 );
 
 // Handle storage changes
-chrome.storage.onChanged.addListener(
+storage.onChanged.addListener(
   (
     changes: { [key: string]: chrome.storage.StorageChange },
     areaName: string,

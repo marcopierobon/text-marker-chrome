@@ -81,8 +81,24 @@ test.describe("Content Integration E2E Tests", () => {
     await context.close();
   });
 
+  // Helper to inject content script
+  async function injectContentScript() {
+    await serviceWorker.evaluate(async () => {
+      const tabs = await chrome.tabs.query({});
+      const targetTab = tabs.find(tab => tab.url && tab.url.includes('test-page.html'));
+      
+      if (targetTab && targetTab.id) {
+        await chrome.scripting.executeScript({
+          target: { tabId: targetTab.id },
+          files: ["content/content.js"],
+        });
+      }
+    });
+  }
+
   test("detects symbols in DOM and renders badges end-to-end", async () => {
     await page.goto(testPagePath);
+    await injectContentScript();
 
     // Wait for extension to process the page
     await page.waitForTimeout(2000);
@@ -109,7 +125,8 @@ test.describe("Content Integration E2E Tests", () => {
 
   test("handles multiple symbols in same text node", async () => {
     await page.goto(testPagePath);
-    await page.waitForTimeout(2000);
+    await injectContentScript();
+    await page.waitForTimeout(1000);
 
     // Check for AAPL, TSLA, AMZN badges using data-symbol attribute
     const aaplBadge = await page
@@ -129,7 +146,8 @@ test.describe("Content Integration E2E Tests", () => {
 
   test("creates badge with multiple group icons when symbol appears in multiple groups", async () => {
     await page.goto(testPagePath);
-    await page.waitForTimeout(2000);
+    await injectContentScript();
+    await page.waitForTimeout(1000);
 
     // Find AAPL badge and check it has group containers
     const aaplBadge = page.locator('.fool-badge[data-symbol="AAPL"]').first();
@@ -143,7 +161,8 @@ test.describe("Content Integration E2E Tests", () => {
 
   test("handles category objects with URLs in badge tooltips", async () => {
     await page.goto(testPagePath);
-    await page.waitForTimeout(2000);
+    await injectContentScript();
+    await page.waitForTimeout(1000);
 
     // Find AAPL badge which has multiple categories (AI and Portfolio) so it will have a tooltip
     const badge = page.locator('.fool-badge[data-symbol="AAPL"]').first();
@@ -164,7 +183,8 @@ test.describe("Content Integration E2E Tests", () => {
 
   test("handles dynamically added nested elements", async () => {
     await page.goto(testPagePath);
-    await page.waitForTimeout(2000);
+    await injectContentScript();
+    await page.waitForTimeout(1000);
 
     // Get initial badge count
     const initialBadges = await page.locator(".fool-badge").count();
@@ -194,7 +214,8 @@ test.describe("Content Integration E2E Tests", () => {
   test("handles configuration reload and badge refresh", async () => {
     test.setTimeout(10000);
     await page.goto(testPagePath);
-    await page.waitForTimeout(2000);
+    await injectContentScript();
+    await page.waitForTimeout(1000);
 
     // Show test-4 div which has AAPL, TSLA, NVDA
     await page.evaluate(() => {
@@ -253,6 +274,10 @@ test.describe("Content Integration E2E Tests", () => {
   });
 
   test("handles symbols with special regex characters", async () => {
+    await page.goto(testPagePath);
+    await injectContentScript();
+    await page.waitForTimeout(1000);
+    
     // Reset configuration to include BRKB and BFA
     await serviceWorker.evaluate(() => {
       return new Promise<void>((resolve) => {
