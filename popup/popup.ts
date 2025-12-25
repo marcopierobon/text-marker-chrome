@@ -9,7 +9,7 @@ import type {
 let configuration: SymbolMarkerConfig = {
   groups: [],
   urlFilters: {
-    mode: "whitelist",
+    mode: "blacklist",
     patterns: [],
   },
   floatingWindow: false,
@@ -20,9 +20,20 @@ let currentGroupIndex: number = -1;
 
 // Initialize
 document.addEventListener("DOMContentLoaded", async () => {
+  console.log("🚀 Popup initializing...");
+  
+  // Check what type of window we're in
+  const currentWindow = await chrome.windows.getCurrent();
+  console.log("🪟 Window type on open:", currentWindow.type);
+  
   await loadConfiguration();
+  console.log("📋 Configuration loaded:", {
+    floatingWindow: configuration.floatingWindow,
+    groupCount: configuration.groups.length
+  });
   setupEventListeners();
   await checkAndConvertToFloatingWindow();
+  console.log("✅ Popup initialization complete");
 });
 
 // Load configuration from storage (hybrid approach)
@@ -48,7 +59,7 @@ async function loadConfiguration(): Promise<void> {
 
     // Ensure urlFilters exists
     if (!configuration.urlFilters) {
-      configuration.urlFilters = { mode: "whitelist", patterns: [] };
+      configuration.urlFilters = { mode: "blacklist", patterns: [] };
     }
 
     // Ensure floatingWindow has a default value
@@ -628,7 +639,7 @@ async function importConfiguration(event: Event): Promise<void> {
 
       // Ensure urlFilters exists in imported config
       if (!imported.urlFilters) {
-        imported.urlFilters = { mode: "whitelist", patterns: [] };
+        imported.urlFilters = { mode: "blacklist", patterns: [] };
       }
 
       configuration = imported;
@@ -694,7 +705,7 @@ function getDefaultConfiguration(): SymbolMarkerConfig {
       },
     ],
     urlFilters: {
-      mode: "whitelist",
+      mode: "blacklist",
       patterns: [],
     },
     floatingWindow: false,
@@ -710,51 +721,87 @@ async function handleFloatingWindowToggle(event: Event): Promise<void> {
   await saveConfigurationToStorage();
 
   if (isEnabled) {
-    // Convert current popup to floating window
-    await convertToFloatingWindow();
+    // Try to convert current window to floating window
+    const success = await convertToFloatingWindow();
+    if (!success) {
+      // If conversion failed, show message that it will apply on next open
+      showToast(
+        "Floating window mode enabled. Will open as floating window next time.",
+        "success",
+      );
+    }
   } else {
-    // If we're in a floating window, close it
-    // The popup will revert to normal behavior on next open
     showToast(
-      "Floating window mode disabled. Close and reopen to see changes.",
+      "Floating window mode disabled. Will open normally next time.",
       "success",
     );
   }
 }
 
 async function checkAndConvertToFloatingWindow(): Promise<void> {
-  // Only convert if floating window is enabled and we're in a popup (not already a window)
+  // Only convert if floating window is enabled and we're in a popup (not already a normal window)
   if (configuration.floatingWindow) {
-    // Check if we're in a popup or a window
+    // Check if we're in a popup or already in a normal window
     const currentWindow = await chrome.windows.getCurrent();
+    
+    console.log("Floating window check:", {
+      floatingWindowEnabled: configuration.floatingWindow,
+      currentWindowType: currentWindow.type,
+      willConvert: currentWindow.type === "popup"
+    });
 
-    // If we're in a popup type, convert to floating window
+    // If we're in a popup type, convert to persistent floating window
+    // If already in a normal window, we're already in floating mode - do nothing
     if (currentWindow.type === "popup") {
       await convertToFloatingWindow();
     }
   }
 }
 
-async function convertToFloatingWindow(): Promise<void> {
+async function convertToFloatingWindow(): Promise<boolean> {
+  console.log("🔄 convertToFloatingWindow() called");
   try {
-    // Get current window to close it after creating the new one
+    // Get current window to check its type
     const currentWindow = await chrome.windows.getCurrent();
+    console.log("Current window type:", currentWindow.type);
 
-    // Create a new floating window
-    await chrome.windows.create({
+    // CRITICAL: Only proceed if we're in a popup, not a normal browser window
+    // This prevents closing the entire browser window with all tabs
+    if (currentWindow.type !== "popup") {
+      console.log("❌ Not converting - not in a popup window");
+      // Can't convert now, but preference is saved for next time
+      return false;
+    }
+    
+    console.log("✅ In popup window - proceeding with conversion");
+
+    // Create a persistent floating window (normal type stays open when clicking away)
+    const newWindow = await chrome.windows.create({
       url: chrome.runtime.getURL("popup/popup.html"),
-      type: "popup",
+      type: "normal", // Normal window type persists and doesn't auto-close
       width: 800,
       height: 600,
       focused: true,
+      state: "normal", // Ensure it's not minimized/maximized
     });
+    
+    if (newWindow) {
+      console.log("Created floating window:", {
+        windowId: newWindow.id,
+        windowType: newWindow.type,
+        state: newWindow.state
+      });
+    }
 
-    // Close the current popup window
+    // Close the current popup window (safe because we verified it's a popup)
     if (currentWindow.id) {
       await chrome.windows.remove(currentWindow.id);
     }
+    
+    return true;
   } catch {
     showToast("Error creating floating window", "error");
+    return false;
   }
 }
 
@@ -797,7 +844,7 @@ function setupURLFilterListeners(): void {
     .forEach((radio) => {
       radio.addEventListener("change", async (e) => {
         if (!configuration.urlFilters) {
-          configuration.urlFilters = { mode: "whitelist", patterns: [] };
+          configuration.urlFilters = { mode: "blacklist", patterns: [] };
         }
         configuration.urlFilters.mode = (e.target as HTMLInputElement).value as
           | "whitelist"
@@ -899,7 +946,7 @@ async function addURLPattern(): Promise<void> {
 
   // Ensure urlFilters exists
   if (!configuration.urlFilters) {
-    configuration.urlFilters = { mode: "whitelist", patterns: [] };
+    configuration.urlFilters = { mode: "blacklist", patterns: [] };
   }
 
   // Check for duplicates

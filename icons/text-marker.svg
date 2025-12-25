@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Text Marker icon">
+  <!-- Background -->
+  <rect x="8" y="8" width="112" height="112" rx="26" fill="#0B1220"/>
+
+  <!-- Highlight strokes -->
+  <rect x="26" y="38" width="56" height="10" rx="5" fill="#FDE68A" opacity="0.95"/>
+  <rect x="26" y="54" width="66" height="10" rx="5" fill="#FDE68A" opacity="0.95"/>
+  <rect x="26" y="70" width="50" height="10" rx="5" fill="#FDE68A" opacity="0.95"/>
+
+  <!-- Marker body -->
+  <g transform="translate(0,0)">
+    <!-- Shadow -->
+    <path d="M84 36 L102 54 L62 94 L44 94 L44 76 Z" fill="#000000" opacity="0.25"/>
+    <!-- Main marker -->
+    <path d="M82 34 L104 56 L64 96 L42 96 L42 74 Z" fill="#22C55E"/>
+    <!-- Marker cap -->
+    <path d="M82 34 L92 24 L114 46 L104 56 Z" fill="#16A34A"/>
+    <!-- Tip -->
+    <path d="M42 74 L64 96 L42 96 Z" fill="#111827"/>
+    <!-- Tip highlight -->
+    <path d="M48 80 L58 90 L48 90 Z" fill="#334155" opacity="0.7"/>
+  </g>
+
+  <!-- Badge dot (customizable badges hint) -->
+  <circle cx="96" cy="32" r="10" fill="#60A5FA"/>
+  <circle cx="96" cy="32" r="4" fill="#0B1220" opacity="0.35"/>
+</svg>

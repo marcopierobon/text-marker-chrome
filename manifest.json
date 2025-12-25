@@ -4,10 +4,16 @@
   "version": "1.0",
   "description": "Highlights text patterns on web pages with customizable badges and tooltips",
   "permissions": ["storage", "activeTab"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "action": {
     "default_popup": "popup/popup.html",
     "default_title": "Text Marker Configuration"
   },
+  "options_page": "popup/popup.html",
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
   },

@@ -18,7 +18,7 @@ export function getDefaultConfiguration(): SymbolMarkerConfig {
       },
     ],
     urlFilters: {
-      mode: "whitelist",
+      mode: "blacklist",
       patterns: [],
     },
   };

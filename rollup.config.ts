@@ -31,6 +31,7 @@ export default defineConfig({
         { src: "manifest.json", dest: "dist" },
         { src: "popup/popup.html", dest: "dist/popup" },
         { src: "popup/popup.css", dest: "dist/popup" },
+        { src: "icons/*", dest: "dist/icons" },
       ],
     }),
   ],
