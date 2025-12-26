@@ -2,9 +2,9 @@
  * Browser API mock helper for testing both Chrome and Firefox
  */
 
-export type BrowserType = 'chrome' | 'firefox';
+export type BrowserType = "chrome" | "firefox";
 
-export function setupBrowserMock(browserType: BrowserType = 'chrome') {
+export function setupBrowserMock(browserType: BrowserType = "chrome") {
   const mockStorage = {
     sync: {
       get: jest.fn(),
@@ -25,8 +25,10 @@ export function setupBrowserMock(browserType: BrowserType = 'chrome') {
     onMessage: {
       addListener: jest.fn(),
     },
-    getManifest: jest.fn(() => ({ version: '1.0.0' })),
-    getURL: jest.fn((path: string) => `${browserType}-extension://test/${path}`),
+    getManifest: jest.fn(() => ({ version: "1.0.0" })),
+    getURL: jest.fn(
+      (path: string) => `${browserType}-extension://test/${path}`,
+    ),
   };
 
   const mockTabs = {
@@ -39,7 +41,9 @@ export function setupBrowserMock(browserType: BrowserType = 'chrome') {
     getCurrent: jest.fn(),
     create: jest.fn(),
     remove: jest.fn(),
-    getURL: jest.fn((path: string) => `${browserType}-extension://test/${path}`),
+    getURL: jest.fn(
+      (path: string) => `${browserType}-extension://test/${path}`,
+    ),
   };
 
   const mockPermissions = {
@@ -68,7 +72,7 @@ export function setupBrowserMock(browserType: BrowserType = 'chrome') {
     action: mockAction,
   };
 
-  if (browserType === 'firefox') {
+  if (browserType === "firefox") {
     // Firefox uses 'browser' namespace
     (global as any).browser = mockAPI;
     // Also set chrome for compatibility

@@ -1,16 +1,27 @@
-import { SymbolDetector } from "../..//content/symbol-detector";
-import { BadgeRenderer } from "../..//content/badge-renderer";
-import { StorageService } from "../..//shared/storage-service";
-import { setupChromeMock } from "../helpers/chrome-mock";
+// Integration tests for Content Script - Full workflow
+import { describe, test, expect, beforeEach, afterEach } from "@jest/globals";
+import { SymbolDetector } from "../../content/symbol-detector";
+import { BadgeRenderer } from "../../content/badge-renderer";
+import { StorageService } from "../../shared/storage-service";
+import { createMockStorage } from "../helpers/mock-storage";
+import type { BrowserAPI } from "../../shared/browser-api";
 
 describe("Content Integration Tests", () => {
   let detector: SymbolDetector;
   let renderer: BadgeRenderer;
+  let mockStorage: BrowserAPI["storage"];
 
   beforeEach(() => {
     detector = new SymbolDetector();
     renderer = new BadgeRenderer();
     document.body.innerHTML = "";
+
+    mockStorage = createMockStorage();
+    StorageService.setStorageAPI(mockStorage);
+  });
+
+  afterEach(() => {
+    StorageService.resetStorageAPI();
   });
 
   describe("Symbol Detection to Badge Rendering Pipeline", () => {
@@ -267,29 +278,24 @@ describe("Content Integration Tests", () => {
 
   describe("ContentScript Full Workflow Integration", () => {
     test("complete workflow: load config, detect symbols, render badges", async () => {
-      setupChromeMock();
-      (chrome.storage.sync.get as any) = (_keys: any, callback?: any) => {
-        const result = {
-          symbolMarkerConfig: {
-            groups: [
-              {
-                name: "Test Portfolio",
-                iconUrl: "https://example.com/icon.png",
-                color: "#ff0000",
-                categories: {
-                  Tech: ["AAPL", "MSFT"],
-                },
+      (mockStorage.sync.get as jest.Mock).mockResolvedValue({
+        symbolMarkerConfig: {
+          groups: [
+            {
+              name: "Test Portfolio",
+              iconUrl: "https://example.com/icon.png",
+              color: "#ff0000",
+              categories: {
+                Tech: ["AAPL", "MSFT"],
               },
-            ],
-            urlFilters: {
-              mode: "whitelist",
-              patterns: [],
             },
+          ],
+          urlFilters: {
+            mode: "whitelist",
+            patterns: [],
           },
-        };
-        if (callback) callback(result);
-        return Promise.resolve(result);
-      };
+        },
+      });
 
       // Step 1: Load configuration
       const config: any = (await StorageService.load(
@@ -365,22 +371,10 @@ describe("Content Integration Tests", () => {
         ],
       };
 
-      (global as any).chrome = {
-        storage: {
-          sync: {
-            get: (_keys: any, callback?: any) => {
-              const result = { symbolMarkerConfig: initialConfig };
-              if (callback) callback(result);
-              return Promise.resolve(result);
-            },
-            set: () => Promise.resolve(),
-          },
-          local: {
-            get: () => Promise.resolve({}),
-            set: () => Promise.resolve(),
-          },
-        },
-      };
+      // Setup initial mock
+      (mockStorage.sync.get as jest.Mock).mockResolvedValue({
+        symbolMarkerConfig: initialConfig,
+      });
 
       // Initial load
       let config = await StorageService.load("symbolMarkerConfig");
@@ -390,12 +384,9 @@ describe("Content Integration Tests", () => {
       expect(detector.hasSymbol("TSLA")).toBe(false);
 
       // Simulate configuration reload
-      (chrome.storage.sync.get as any) = (_keys: any, callback: any) => {
-        if (typeof callback === "function") {
-          callback({ symbolMarkerConfig: newConfig });
-        }
-        return Promise.resolve({ symbolMarkerConfig: newConfig });
-      };
+      (mockStorage.sync.get as jest.Mock).mockResolvedValue({
+        symbolMarkerConfig: newConfig,
+      });
 
       config = await StorageService.load("symbolMarkerConfig");
 

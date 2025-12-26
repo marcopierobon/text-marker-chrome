@@ -2,7 +2,9 @@
 // Coordinates symbol detection, badge rendering, and configuration management
 
 // Mark that content script has been injected
-(window as any).__textMarkerInjected = true;
+(
+  window as typeof window & { __textMarkerInjected: boolean }
+).__textMarkerInjected = true;
 
 import { SymbolDetector } from "./symbol-detector";
 import { BadgeRenderer } from "./badge-renderer";

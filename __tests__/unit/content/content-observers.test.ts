@@ -1,7 +1,7 @@
 // Integration tests for MutationObserver, Periodic Checks, and Message Listeners
 import { describe, test, expect, beforeEach, jest } from "@jest/globals";
-import { SymbolDetector } from "../..//content/symbol-detector";
-import { BadgeRenderer } from "../..//content/badge-renderer";
+import { SymbolDetector } from "../../../content/symbol-detector";
+import { BadgeRenderer } from "../../../content/badge-renderer";
 
 describe("Content Script Observers - Advanced Tests", () => {
   let detector: SymbolDetector;

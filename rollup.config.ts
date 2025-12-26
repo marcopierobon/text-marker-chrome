@@ -8,7 +8,7 @@ const target = process.env.TARGET || "chrome";
 const isFirefox = target === "firefox";
 
 // Output directory based on target
-const outputDir = isFirefox ? "dist-firefox" : "dist";
+const outputDir = isFirefox ? "dist/firefox" : "dist/chrome";
 
 // Manifest file based on target
 const manifestFile = isFirefox ? "manifest.firefox.json" : "manifest.json";

@@ -1,21 +1,31 @@
 // Integration tests for Content Script Orchestration - Advanced scenarios
-import { describe, test, expect, beforeEach, jest } from "@jest/globals";
-import { SymbolDetector } from "../..//content/symbol-detector";
-import { BadgeRenderer } from "../..//content/badge-renderer";
-import { StorageService } from "../..//shared/storage-service";
-import { setupChromeMock } from "../helpers/chrome-mock";
+import {
+  describe,
+  test,
+  expect,
+  beforeEach,
+  afterEach,
+  jest,
+} from "@jest/globals";
+import { SymbolDetector } from "../../../content/symbol-detector";
+import { BadgeRenderer } from "../../../content/badge-renderer";
+import { StorageService } from "../../../shared/storage-service";
+import { createMockStorage } from "../../helpers/mock-storage";
+import type { BrowserAPI } from "../../../shared/browser-api";
 
 describe("Content Script Orchestration - Advanced Tests", () => {
   let detector: SymbolDetector;
   let renderer: BadgeRenderer;
+  let mockStorage: BrowserAPI["storage"];
 
   beforeEach(() => {
     detector = new SymbolDetector();
     renderer = new BadgeRenderer();
     document.body.innerHTML = "";
 
-    // Setup chrome mock
-    setupChromeMock();
+    mockStorage = createMockStorage();
+    StorageService.setStorageAPI(mockStorage);
+
     (global.chrome as any).runtime = {
       onMessage: {
         addListener: jest.fn(),
@@ -23,9 +33,13 @@ describe("Content Script Orchestration - Advanced Tests", () => {
     };
   });
 
+  afterEach(() => {
+    StorageService.resetStorageAPI();
+  });
+
   describe("Initialization Failure Scenarios", () => {
     test("handles storage unavailable", async () => {
-      (chrome.storage.sync.get as jest.Mock).mockImplementation(() => {
+      (mockStorage.sync.get as jest.Mock).mockImplementation(() => {
         throw new Error("Storage unavailable");
       });
 
@@ -40,13 +54,9 @@ describe("Content Script Orchestration - Advanced Tests", () => {
     });
 
     test("handles corrupted/invalid JSON in configuration", async () => {
-      (chrome.storage.sync.get as jest.Mock).mockImplementation(
-        (_keys: any, callback: any) => {
-          const result = { symbolMarkerConfig: { groups: "not-an-array" } };
-          if (callback) callback(result);
-          return Promise.resolve(result);
-        },
-      );
+      (mockStorage.sync.get as jest.Mock<any>).mockResolvedValue({
+        symbolMarkerConfig: { groups: "not-an-array" },
+      });
 
       const config: any = (await StorageService.load(
         "symbolMarkerConfig",
@@ -57,27 +67,13 @@ describe("Content Script Orchestration - Advanced Tests", () => {
     });
 
     test("handles missing configuration gracefully", async () => {
-      (chrome.storage.sync.get as jest.Mock).mockImplementation(
-        (_keys: any, callback: any) => {
-          const result = {};
-          if (callback) callback(result);
-          return Promise.resolve(result);
-        },
-      );
-
-      (chrome.storage.local.get as jest.Mock).mockImplementation(
-        (_keys: any, callback: any) => {
-          const result = {};
-          if (callback) callback(result);
-          return Promise.resolve(result);
-        },
-      );
+      (mockStorage.sync.get as jest.Mock<any>).mockResolvedValue({});
+      (mockStorage.local.get as jest.Mock<any>).mockResolvedValue({});
 
       const config: any = (await StorageService.load(
         "symbolMarkerConfig",
       )) as any;
 
-      // StorageService returns null when not found
       expect(config).toBeNull();
     });
 
@@ -576,11 +572,11 @@ describe("Content Script Orchestration - Advanced Tests", () => {
     test("recovery from storage quota exceeded errors", async () => {
       const largeData = "x".repeat(200000);
 
-      (chrome.storage.sync.set as jest.Mock).mockImplementation(() => {
+      (mockStorage.sync.set as jest.Mock).mockImplementation(() => {
         throw new Error("QUOTA_BYTES quota exceeded");
       });
 
-      (chrome.storage.local.set as jest.Mock).mockImplementation(
+      (mockStorage.local.set as jest.Mock).mockImplementation(
         (_data: any, callback: any) => {
           if (callback) (callback as any)();
           return Promise.resolve(undefined);
@@ -595,7 +591,7 @@ describe("Content Script Orchestration - Advanced Tests", () => {
       }
 
       // Should have attempted local storage fallback
-      expect(chrome.storage.local.set).toHaveBeenCalled();
+      expect(mockStorage.local.set).toHaveBeenCalled();
     });
 
     test("handles corrupted symbol maps gracefully", () => {

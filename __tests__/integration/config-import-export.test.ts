@@ -1,12 +1,27 @@
 // Integration tests for Configuration Import and Export
-import { describe, test, expect, beforeEach, jest } from "@jest/globals";
+import {
+  describe,
+  test,
+  expect,
+  beforeEach,
+  afterEach,
+  jest,
+} from "@jest/globals";
 import { StorageService } from "../..//shared/storage-service";
-import { setupChromeMock } from "../helpers/chrome-mock";
+import { createMockStorage } from "../helpers/mock-storage";
+import type { BrowserAPI } from "../../shared/browser-api";
 
 describe("Configuration Import/Export - Integration Tests", () => {
+  let mockStorage: BrowserAPI["storage"];
+
   beforeEach(() => {
-    // Setup chrome storage mock
-    setupChromeMock();
+    mockStorage = createMockStorage();
+    StorageService.setStorageAPI(mockStorage);
+  });
+
+  afterEach(() => {
+    StorageService.resetStorageAPI();
+    jest.clearAllMocks();
   });
 
   describe("Configuration Export", () => {
@@ -29,7 +44,7 @@ describe("Configuration Import/Export - Integration Tests", () => {
         },
       };
 
-      (chrome.storage.sync.get as jest.Mock).mockImplementation(
+      (mockStorage.sync.get as jest.Mock).mockImplementation(
         (_keys: any, callback: any) => {
           const result = { symbolMarkerConfig: testConfig };
           if (callback) callback(result);
@@ -72,7 +87,7 @@ describe("Configuration Import/Export - Integration Tests", () => {
         ],
       };
 
-      (chrome.storage.sync.get as jest.Mock).mockImplementation(
+      (mockStorage.sync.get as jest.Mock).mockImplementation(
         (_keys: any, callback: any) => {
           const result = { symbolMarkerConfig: testConfig };
           if (callback) callback(result);
@@ -111,7 +126,7 @@ describe("Configuration Import/Export - Integration Tests", () => {
         ],
       };
 
-      (chrome.storage.sync.get as jest.Mock).mockImplementation(
+      (mockStorage.sync.get as jest.Mock).mockImplementation(
         (_keys: any, callback: any) => {
           const result = { symbolMarkerConfig: testConfig };
           if (callback) callback(result);
@@ -144,7 +159,7 @@ describe("Configuration Import/Export - Integration Tests", () => {
         },
       };
 
-      (chrome.storage.sync.get as jest.Mock).mockImplementation(
+      (mockStorage.sync.get as jest.Mock).mockImplementation(
         (_keys: any, callback: any) => {
           const result = { symbolMarkerConfig: testConfig };
           if (callback) callback(result);
@@ -163,7 +178,7 @@ describe("Configuration Import/Export - Integration Tests", () => {
     });
 
     test("handles export when no configuration exists", async () => {
-      (chrome.storage.sync.get as jest.Mock).mockImplementation(
+      (mockStorage.sync.get as jest.Mock).mockImplementation(
         (_keys: any, callback: any) => {
           const result = {};
           if (callback) callback(result);
@@ -171,7 +186,7 @@ describe("Configuration Import/Export - Integration Tests", () => {
         },
       );
 
-      (chrome.storage.local.get as jest.Mock).mockImplementation(
+      (mockStorage.local.get as jest.Mock).mockImplementation(
         (_keys: any, callback: any) => {
           const result = {};
           if (callback) callback(result);
@@ -202,7 +217,7 @@ describe("Configuration Import/Export - Integration Tests", () => {
         ],
       };
 
-      (chrome.storage.sync.set as jest.Mock).mockImplementation(
+      (mockStorage.sync.set as jest.Mock).mockImplementation(
         (_data: any, callback: any) => {
           if (callback) (callback as any)();
           return Promise.resolve(undefined);
@@ -211,8 +226,8 @@ describe("Configuration Import/Export - Integration Tests", () => {
 
       await StorageService.save("symbolMarkerConfig", importedConfig);
 
-      expect(chrome.storage.sync.set).toHaveBeenCalled();
-      const savedData: any = (chrome.storage.sync.set as jest.Mock).mock
+      expect(mockStorage.sync.set).toHaveBeenCalled();
+      const savedData: any = (mockStorage.sync.set as jest.Mock).mock
         .calls[0][0];
       expect(savedData.symbolMarkerConfig).toEqual(importedConfig);
     });
@@ -241,7 +256,7 @@ describe("Configuration Import/Export - Integration Tests", () => {
         ],
       };
 
-      (chrome.storage.sync.set as jest.Mock).mockImplementation(
+      (mockStorage.sync.set as jest.Mock).mockImplementation(
         (_data: any, callback: any) => {
           if (callback) (callback as any)();
           return Promise.resolve(undefined);
@@ -250,8 +265,8 @@ describe("Configuration Import/Export - Integration Tests", () => {
 
       await StorageService.save("symbolMarkerConfig", importedConfig);
 
-      expect(chrome.storage.sync.set).toHaveBeenCalled();
-      const savedData: any = (chrome.storage.sync.set as jest.Mock).mock
+      expect(mockStorage.sync.set).toHaveBeenCalled();
+      const savedData: any = (mockStorage.sync.set as jest.Mock).mock
         .calls[0][0];
       expect(savedData.symbolMarkerConfig.groups.length).toBe(3);
     });
@@ -268,7 +283,7 @@ describe("Configuration Import/Export - Integration Tests", () => {
         ],
       };
 
-      (chrome.storage.sync.set as jest.Mock).mockImplementation(
+      (mockStorage.sync.set as jest.Mock).mockImplementation(
         (data: any, callback: any) => {
           // Simulate validation
           if (
@@ -303,7 +318,7 @@ describe("Configuration Import/Export - Integration Tests", () => {
         ],
       };
 
-      (chrome.storage.sync.set as jest.Mock).mockImplementation(
+      (mockStorage.sync.set as jest.Mock).mockImplementation(
         (_data: any, callback: any) => {
           if (callback) (callback as any)();
           return Promise.resolve(undefined);
@@ -313,7 +328,7 @@ describe("Configuration Import/Export - Integration Tests", () => {
       // Should still save even with missing fields (validation happens elsewhere)
       await StorageService.save("symbolMarkerConfig", incompleteConfig);
 
-      expect(chrome.storage.sync.set).toHaveBeenCalled();
+      expect(mockStorage.sync.set).toHaveBeenCalled();
     });
 
     test("imports large configuration successfully", async () => {
@@ -335,11 +350,11 @@ describe("Configuration Import/Export - Integration Tests", () => {
         });
       }
 
-      (chrome.storage.sync.set as jest.Mock).mockImplementation(() => {
+      (mockStorage.sync.set as jest.Mock).mockImplementation(() => {
         throw new Error("QUOTA_BYTES quota exceeded");
       });
 
-      (chrome.storage.local.set as jest.Mock).mockImplementation(
+      (mockStorage.local.set as jest.Mock).mockImplementation(
         (_data: any, callback: any) => {
           if (callback) (callback as any)();
           return Promise.resolve(undefined);
@@ -349,7 +364,7 @@ describe("Configuration Import/Export - Integration Tests", () => {
       // Should fall back to local storage for large configs
       await StorageService.save("symbolMarkerConfig", largeConfig);
 
-      expect(chrome.storage.local.set).toHaveBeenCalled();
+      expect(mockStorage.local.set).toHaveBeenCalled();
     });
   });
 
@@ -381,7 +396,7 @@ describe("Configuration Import/Export - Integration Tests", () => {
       };
 
       // Export
-      (chrome.storage.sync.get as jest.Mock).mockImplementation(
+      (mockStorage.sync.get as jest.Mock).mockImplementation(
         (_keys: any, callback: any) => {
           const result = { symbolMarkerConfig: originalConfig };
           if (callback) callback(result);
@@ -395,7 +410,7 @@ describe("Configuration Import/Export - Integration Tests", () => {
       // Re-import
       const reimported = JSON.parse(exportedJson);
 
-      (chrome.storage.sync.set as jest.Mock).mockImplementation(
+      (mockStorage.sync.set as jest.Mock).mockImplementation(
         (_data: any, callback: any) => {
           if (callback) (callback as any)();
           return Promise.resolve(undefined);
@@ -433,7 +448,7 @@ describe("Configuration Import/Export - Integration Tests", () => {
         ],
       };
 
-      (chrome.storage.sync.get as jest.Mock).mockImplementation(
+      (mockStorage.sync.get as jest.Mock).mockImplementation(
         (_keys: any, callback: any) => {
           const result = { symbolMarkerConfig: configWithSpecialChars };
           if (callback) callback(result);
@@ -465,7 +480,7 @@ describe("Configuration Import/Export - Integration Tests", () => {
         ],
       };
 
-      (chrome.storage.sync.get as jest.Mock).mockImplementation(
+      (mockStorage.sync.get as jest.Mock).mockImplementation(
         (_keys: any, callback: any) => {
           const result = { symbolMarkerConfig: configWithUnicode };
           if (callback) callback(result);
@@ -513,7 +528,7 @@ describe("Configuration Import/Export - Integration Tests", () => {
         groups: [...existingConfig.groups, ...newConfig.groups],
       };
 
-      (chrome.storage.sync.set as jest.Mock).mockImplementation(
+      (mockStorage.sync.set as jest.Mock).mockImplementation(
         (_data: any, callback: any) => {
           if (callback) (callback as any)();
           return Promise.resolve(undefined);
@@ -522,7 +537,7 @@ describe("Configuration Import/Export - Integration Tests", () => {
 
       await StorageService.save("symbolMarkerConfig", mergedConfig);
 
-      const savedData: any = (chrome.storage.sync.set as jest.Mock).mock
+      const savedData: any = (mockStorage.sync.set as jest.Mock).mock
         .calls[0][0];
       expect(savedData.symbolMarkerConfig.groups.length).toBe(2);
       expect(savedData.symbolMarkerConfig.groups[0].name).toBe(
@@ -563,7 +578,7 @@ describe("Configuration Import/Export - Integration Tests", () => {
         categories: { B: ["B1", "B2"] },
       };
 
-      (chrome.storage.sync.set as jest.Mock).mockImplementation(
+      (mockStorage.sync.set as jest.Mock).mockImplementation(
         (_data: any, callback: any) => {
           if (callback) (callback as any)();
           return Promise.resolve(undefined);
@@ -572,7 +587,7 @@ describe("Configuration Import/Export - Integration Tests", () => {
 
       await StorageService.save("symbolMarkerConfig", config);
 
-      const savedData: any = (chrome.storage.sync.set as jest.Mock).mock
+      const savedData: any = (mockStorage.sync.set as jest.Mock).mock
         .calls[0][0];
       expect(savedData.symbolMarkerConfig.groups[1].name).toBe(
         "Group 2 Updated",
@@ -586,7 +601,7 @@ describe("Configuration Import/Export - Integration Tests", () => {
 
   describe("Error Handling in Import/Export", () => {
     test("handles storage errors during export", async () => {
-      (chrome.storage.sync.get as jest.Mock).mockImplementation(() => {
+      (mockStorage.sync.get as jest.Mock).mockImplementation(() => {
         throw new Error("Storage access denied");
       });
 
@@ -607,11 +622,11 @@ describe("Configuration Import/Export - Integration Tests", () => {
         ],
       };
 
-      (chrome.storage.sync.set as jest.Mock).mockImplementation(() => {
+      (mockStorage.sync.set as jest.Mock).mockImplementation(() => {
         throw new Error("Storage write failed");
       });
 
-      (chrome.storage.local.set as jest.Mock).mockImplementation(() => {
+      (mockStorage.local.set as jest.Mock).mockImplementation(() => {
         throw new Error("Local storage also failed");
       });
 

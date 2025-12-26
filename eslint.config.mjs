@@ -8,6 +8,7 @@ const ignorePatterns = [
   '**/build/**',
   '**/coverage/**',
   '**/.stryker-tmp/**',
+  '**/src_reference/**',
 ];
 
 export default [
@@ -23,6 +24,7 @@ export default [
       '**/build/**',
       '**/coverage/**',
       '**/.stryker-tmp/**',
+      '**/src_reference/**',
     ],
     plugins: {
       "@typescript-eslint": typescriptEslint,

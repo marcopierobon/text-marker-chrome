@@ -5,7 +5,14 @@ import type {
   SymbolGroup,
   CategoryValue,
 } from "../types/symbol-config";
-import { permissions, windows, storage, tabs, systemDisplay, getURL } from "../shared/browser-api";
+import {
+  permissions,
+  windows,
+  storage,
+  tabs,
+  systemDisplay,
+  getURL,
+} from "../shared/browser-api";
 
 let configuration: SymbolMarkerConfig = {
   groups: [],

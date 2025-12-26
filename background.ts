@@ -2,9 +2,39 @@
 // Handles extension lifecycle, message routing, and state management
 
 import type { ChromeMessage, SendResponse } from "./types/chrome-extension";
-import { permissions, action, scripting, runtime, storage, tabs } from "./shared/browser-api";
+import {
+  permissions,
+  action,
+  scripting,
+  runtime,
+  storage,
+  tabs,
+} from "./shared/browser-api";
 
-const DEBUG_MODE = false;
+// Import webNavigation if available
+interface WebNavigationAPI {
+  onCompleted?: {
+    addListener: (
+      callback: (
+        details: chrome.webNavigation.WebNavigationFramedCallbackDetails,
+      ) => void | Promise<void>,
+    ) => void;
+  };
+}
+
+const webNavigation: WebNavigationAPI | undefined =
+  (
+    globalThis as typeof globalThis & {
+      browser?: { webNavigation?: WebNavigationAPI };
+    }
+  ).browser?.webNavigation ||
+  (
+    globalThis as typeof globalThis & {
+      chrome?: { webNavigation?: WebNavigationAPI };
+    }
+  ).chrome?.webNavigation;
+
+const DEBUG_MODE = true;
 
 interface Logger {
   info: (...args: unknown[]) => void;
@@ -50,7 +80,10 @@ action.onClicked.addListener(async (tab) => {
     const results = await scripting.executeScript({
       target: { tabId: tab.id },
       func: () => {
-        return typeof (window as any).__textMarkerInjected !== "undefined";
+        return (
+          typeof (window as typeof window & { __textMarkerInjected?: boolean })
+            .__textMarkerInjected !== "undefined"
+        );
       },
     });
 
@@ -72,20 +105,116 @@ action.onClicked.addListener(async (tab) => {
 });
 
 // Listen for extension installation or update
-runtime.onInstalled.addListener(
-  (details: chrome.runtime.InstalledDetails) => {
-    if (details.reason === "install") {
-      log.info("Extension installed");
-      // Could open welcome page or setup wizard here
-    } else if (details.reason === "update") {
-      log.info(
-        "Extension updated to version",
-        runtime.getManifest().version,
-      );
-      // Could handle data migration here if needed
+runtime.onInstalled.addListener((details: chrome.runtime.InstalledDetails) => {
+  if (details.reason === "install") {
+    log.info("Extension installed");
+    // Could open welcome page or setup wizard here
+  } else if (details.reason === "update") {
+    log.info("Extension updated to version", runtime.getManifest().version);
+    // Could handle data migration here if needed
+  }
+});
+
+// Auto-inject content scripts using webNavigation (more reliable for Firefox)
+if (webNavigation && webNavigation.onCompleted) {
+  webNavigation.onCompleted.addListener(
+    async (
+      details: chrome.webNavigation.WebNavigationFramedCallbackDetails,
+    ) => {
+      // Only inject in main frame
+      if (details.frameId !== 0) return;
+
+      const tabId = details.tabId;
+      const url = details.url;
+
+      // Only inject on http/https URLs
+      if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
+        return;
+      }
+
+      log.info("webNavigation.onCompleted fired for tab", tabId, url);
+
+      try {
+        // Check if content script is already injected
+        const results = await scripting.executeScript({
+          target: { tabId },
+          func: () => {
+            return (
+              typeof (
+                window as typeof window & { __textMarkerInjected?: boolean }
+              ).__textMarkerInjected !== "undefined"
+            );
+          },
+        });
+
+        if (results[0]?.result) {
+          log.info("Content script already injected in tab", tabId);
+          return;
+        }
+
+        // Inject content script
+        await scripting.executeScript({
+          target: { tabId },
+          files: ["content/content.js"],
+        });
+
+        log.info(
+          "Content script auto-injected via webNavigation into tab",
+          tabId,
+        );
+      } catch (error) {
+        // Silently fail - some pages don't allow script injection
+        log.warn("Could not inject content script into tab", tabId, error);
+      }
+    },
+  );
+  log.info("webNavigation.onCompleted listener registered");
+}
+
+// Also keep tabs.onUpdated as fallback
+tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  // Only inject when page has finished loading
+  if (changeInfo.status !== "complete") return;
+
+  // Only inject on http/https URLs
+  if (
+    !tab.url ||
+    (!tab.url.startsWith("http://") && !tab.url.startsWith("https://"))
+  ) {
+    return;
+  }
+
+  log.info("tabs.onUpdated fired for tab", tabId, tab.url);
+
+  try {
+    // Check if content script is already injected
+    const results = await scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        return (
+          typeof (window as typeof window & { __textMarkerInjected?: boolean })
+            .__textMarkerInjected !== "undefined"
+        );
+      },
+    });
+
+    if (results[0]?.result) {
+      log.info("Content script already injected in tab", tabId);
+      return;
     }
-  },
-);
+
+    // Inject content script
+    await scripting.executeScript({
+      target: { tabId },
+      files: ["content/content.js"],
+    });
+
+    log.info("Content script auto-injected via tabs.onUpdated into tab", tabId);
+  } catch (error) {
+    // Silently fail - some pages don't allow script injection
+    log.warn("Could not inject content script into tab", tabId, error);
+  }
+});
 
 // Listen for messages from content scripts or popup
 runtime.onMessage.addListener(

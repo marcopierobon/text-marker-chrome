@@ -76,12 +76,14 @@ Text Marker is a versatile Chrome extension that helps you visually identify and
 #### 3. Activate on Websites
 
 **Option A: Automatic Mode (Recommended)**
+
 1. Go to **Settings** tab
 2. Click **"Enable Automatic Mode"**
 3. Grant permission when prompted
 4. Extension runs automatically on all websites
 
 **Option B: Manual Mode**
+
 1. Navigate to any website
 2. Click the extension icon
 3. Extension activates on that page only
@@ -89,11 +91,13 @@ Text Marker is a versatile Chrome extension that helps you visually identify and
 ### Managing Your Configuration
 
 #### Edit Groups
+
 - Click the ✏️ icon on any group card
 - Modify name, icon, or color
 - Click **"Save"** to apply changes
 
 #### Delete Groups
+
 - Click the 🗑️ icon on any group card
 - Confirm deletion
 
@@ -113,11 +117,13 @@ Control where the extension runs:
 #### Import/Export Configuration
 
 **Export**:
+
 1. Go to **Settings** tab
 2. Click **"Export Configuration"**
 3. Save the JSON file
 
 **Import**:
+
 1. Go to **Settings** tab
 2. Click **"Import Configuration"**
 3. Select your JSON file
@@ -155,9 +161,11 @@ text-marker-extension/
 ### Core Components
 
 #### 1. **Content Script** (`content/content.ts`)
+
 The orchestrator that runs on web pages.
 
 **Responsibilities**:
+
 - Initializes symbol detection and badge rendering
 - Loads configuration from storage
 - Manages DOM observation for dynamic content
@@ -165,28 +173,34 @@ The orchestrator that runs on web pages.
 - Implements URL filtering logic
 
 **Key Methods**:
+
 - `loadConfiguration()`: Fetches user settings
 - `scanAndMark()`: Triggers symbol detection
 - `shouldRunOnCurrentUrl()`: Checks URL filters
 
 #### 2. **Symbol Detector** (`content/symbol-detector.ts`)
+
 Finds text patterns in the DOM.
 
 **Responsibilities**:
+
 - Builds regex patterns from configuration
 - Traverses DOM to find text nodes
 - Identifies pattern matches
 - Returns match locations and metadata
 
 **Key Methods**:
+
 - `buildRegexPatterns()`: Compiles patterns into regex
 - `detectSymbols()`: Scans DOM for matches
 - `findTextNodes()`: Locates text content in DOM
 
 #### 3. **Badge Renderer** (`content/badge-renderer.ts`)
+
 Creates visual badges and tooltips.
 
 **Responsibilities**:
+
 - Generates badge HTML elements
 - Applies styling and colors
 - Creates interactive tooltips
@@ -194,15 +208,18 @@ Creates visual badges and tooltips.
 - Handles color contrast for readability
 
 **Key Methods**:
+
 - `createBadge()`: Generates badge container
 - `createTooltip()`: Builds tooltip with categories
 - `attachBadge()`: Inserts badge into DOM
 - `getContrastingBackground()`: Ensures text readability
 
 #### 4. **Popup Interface** (`popup/popup.ts`)
+
 Configuration management UI.
 
 **Responsibilities**:
+
 - Renders group and category management
 - Handles user input and validation
 - Manages import/export functionality
@@ -210,20 +227,24 @@ Configuration management UI.
 - Implements URL filter configuration
 
 **Key Methods**:
+
 - `renderGroups()`: Displays configured groups
 - `saveConfiguration()`: Persists settings
 - `requestHostPermissions()`: Manages automatic mode
 
 #### 5. **Background Service Worker** (`background.ts`)
+
 Manages extension lifecycle and permissions.
 
 **Responsibilities**:
+
 - Handles extension installation/updates
 - Manages message passing between components
 - Injects content scripts (manual mode)
 - Monitors permission changes
 
 **Key Methods**:
+
 - `chrome.action.onClicked`: Handles icon clicks
 - `chrome.runtime.onMessage`: Processes messages
 - `hasHostPermissions()`: Checks permission status
@@ -231,11 +252,13 @@ Manages extension lifecycle and permissions.
 ### Data Flow
 
 1. **Configuration Storage**:
+
    ```
    User Input → Popup → Chrome Storage → Content Script
    ```
 
 2. **Pattern Detection**:
+
    ```
    Page Load → Content Script → Symbol Detector → Badge Renderer → DOM
    ```
@@ -272,6 +295,7 @@ We welcome contributions from the community! Here's how you can help improve Tex
 ### Getting Started
 
 1. **Fork the Repository**
+
    ```bash
    # Click "Fork" on GitHub, then clone your fork
    git clone https://github.com/YOUR_USERNAME/text-marker-chrome.git
@@ -279,6 +303,7 @@ We welcome contributions from the community! Here's how you can help improve Tex
    ```
 
 2. **Install Dependencies**
+
    ```bash
    npm install
    ```
@@ -296,18 +321,20 @@ We welcome contributions from the community! Here's how you can help improve Tex
    - Add comments for complex logic
 
 2. **Build the Extension**
+
    ```bash
    npm run build
    ```
 
 3. **Test Your Changes**
+
    ```bash
    # Run all tests
    npm test
-   
+
    # Run E2E tests
    npm run test:e2e
-   
+
    # Check code formatting
    npm run format:check
    ```
@@ -344,6 +371,7 @@ We welcome contributions from the community! Here's how you can help improve Tex
 #### Commit Messages
 
 Use clear, descriptive commit messages:
+
 ```
 feat: Add support for regex patterns in URL filters
 fix: Resolve badge positioning issue on dynamic content
@@ -354,26 +382,31 @@ test: Add E2E tests for permission flow
 ### Types of Contributions
 
 #### 🐛 Bug Fixes
+
 - Check existing issues first
 - Include steps to reproduce
 - Add tests that verify the fix
 
 #### ✨ New Features
+
 - Open an issue to discuss first
 - Ensure it aligns with project goals
 - Include documentation and tests
 
 #### 📚 Documentation
+
 - Fix typos or unclear explanations
 - Add examples and use cases
 - Improve code comments
 
 #### 🧪 Tests
+
 - Increase test coverage
 - Add edge case tests
 - Improve test reliability
 
 #### 🎨 UI/UX Improvements
+
 - Enhance visual design
 - Improve user experience
 - Ensure accessibility
@@ -386,6 +419,7 @@ test: Add E2E tests for permission flow
    - Update CHANGELOG
 
 2. **Ensure Tests Pass**
+
    ```bash
    ./pre-commit-check.sh
    ```
@@ -448,12 +482,14 @@ test: Add E2E tests for permission flow
 <summary><strong>What's the difference between Automatic and Manual mode?</strong></summary>
 
 **Automatic Mode**:
+
 - Extension runs automatically on all websites
 - Requires granting optional host permissions
 - Badges appear immediately on page load
 - Best for frequent use across many sites
 
 **Manual Mode**:
+
 - Click extension icon on each page to activate
 - No additional permissions required
 - More privacy-conscious
@@ -475,6 +511,7 @@ Check these common issues:
 5. **Dynamic Content**: Some sites load content after page load - try refreshing
 
 **Debug Steps**:
+
 - Open browser console (F12)
 - Look for `[ContentScript]` log messages
 - Verify your pattern appears in the page source (Ctrl+U)
@@ -503,6 +540,7 @@ Regex support for text patterns is on the roadmap!
 4. Save the JSON file to a safe location
 
 To restore:
+
 1. Go to **Settings** tab
 2. Click **"Import Configuration"**
 3. Select your saved JSON file
@@ -513,6 +551,7 @@ To restore:
 <summary><strong>Does this extension collect any data?</strong></summary>
 
 **No.** Text Marker:
+
 - Stores all data locally in Chrome's storage
 - Makes no network requests
 - Sends no analytics or telemetry
@@ -544,6 +583,7 @@ All permissions are used solely for extension functionality.
 Currently, Text Marker only works on desktop Chrome. Mobile Chrome doesn't support extensions in the same way.
 
 However, you can use it on:
+
 - Chrome (desktop)
 - Edge (desktop)
 - Brave (desktop)
@@ -596,6 +636,7 @@ Your configuration will be deleted. Export it first if you want to keep it.
 <summary><strong>Why are some badges not showing the right colors?</strong></summary>
 
 The extension automatically adjusts badge backgrounds for readability:
+
 - Dark text colors get white backgrounds
 - Light text colors get black backgrounds
 
@@ -607,6 +648,7 @@ This ensures text is always readable. If you want different behavior, this can b
 <summary><strong>Can I use custom icons for groups?</strong></summary>
 
 Yes! When creating or editing a group:
+
 1. Enter a URL to any image in the "Icon URL" field
 2. Recommended: Use square images (PNG or SVG)
 3. The icon will appear next to detected patterns
@@ -619,6 +661,7 @@ If no URL is provided, a default colored circle with the group's first letter is
 <summary><strong>What happens if two groups have the same pattern?</strong></summary>
 
 If a pattern appears in multiple groups:
+
 - All matching groups will be displayed
 - Each group shows its own icon and color
 - The tooltip shows all categories from all groups
@@ -632,6 +675,7 @@ This allows flexible organization of overlapping patterns.
 <summary><strong>How do I update the extension?</strong></summary>
 
 For development versions:
+
 1. Pull latest changes from GitHub
 2. Run `npm install` (if dependencies changed)
 3. Run `npm run build`
@@ -639,6 +683,7 @@ For development versions:
 5. Click the refresh icon on the extension card
 
 For Chrome Web Store versions (when available):
+
 - Updates happen automatically
 
 </details>
@@ -662,4 +707,3 @@ ISC
 ---
 
 **Made with ☕ by [Marco Pierobon](https://buymeacoffee.com/pierobon)**
-

@@ -1,30 +1,18 @@
-// Storage operations for popup - testable with mocked chrome API
+// Popup storage operations using DI-friendly StorageService
 import type { SymbolMarkerConfig } from "../types/symbol-config";
-import { shouldUseLocalStorage } from "./popup-helpers";
+import { StorageService } from "../shared/storage-service";
+import { tabs } from "../shared/browser-api";
 
 /**
- * Load configuration from storage (hybrid approach)
+ * Load configuration from storage
  */
 export async function loadConfigurationFromStorage(): Promise<SymbolMarkerConfig | null> {
   try {
-    // Try sync storage first
-    let result = await chrome.storage.sync.get(["symbolMarkerConfig"]);
-
-    if (result.symbolMarkerConfig) {
-      return result.symbolMarkerConfig as SymbolMarkerConfig;
-    }
-
-    // Fallback to local storage
-    result = await chrome.storage.local.get(["symbolMarkerConfig"]);
-
-    if (result.symbolMarkerConfig) {
-      return result.symbolMarkerConfig as SymbolMarkerConfig;
-    }
-
-    return null;
+    // Use StorageService which supports dependency injection
+    return await StorageService.loadConfiguration();
   } catch (error) {
     console.error("Error loading configuration:", error);
-    throw error;
+    return null;
   }
 }
 
@@ -37,17 +25,8 @@ export async function saveConfigurationToStorage(
   try {
     console.log("💾 Saving configuration");
 
-    // Chrome sync storage limit is ~100KB, use local if larger
-    if (shouldUseLocalStorage(configuration)) {
-      console.log(
-        "Configuration too large for sync storage, using local storage",
-      );
-      await chrome.storage.local.set({ symbolMarkerConfig: configuration });
-      // Clear from sync if it was there
-      await chrome.storage.sync.remove(["symbolMarkerConfig"]);
-    } else {
-      await chrome.storage.sync.set({ symbolMarkerConfig: configuration });
-    }
+    // Delegate to StorageService which handles sync/local and fallbacks
+    const saved = await StorageService.saveConfiguration(configuration);
 
     console.log("✅ Configuration saved to storage");
 
@@ -57,18 +36,10 @@ export async function saveConfigurationToStorage(
     // Notify content scripts to reload configuration
     await notifyTabsToReload();
 
-    return true;
+    return saved;
   } catch (error) {
     console.error("Error saving configuration:", error);
-    // Fallback to local storage
-    try {
-      await chrome.storage.local.set({ symbolMarkerConfig: configuration });
-      console.log("✅ Configuration saved to local storage (fallback)");
-      return true;
-    } catch (localError) {
-      console.error("Error saving to local storage:", localError);
-      return false;
-    }
+    return false;
   }
 }
 
@@ -77,20 +48,20 @@ export async function saveConfigurationToStorage(
  */
 async function notifyTabsToReload(): Promise<void> {
   console.log("📢 Notifying tabs to reload configuration");
-  chrome.tabs.query({}, (tabs) => {
-    console.log(`Found ${tabs.length} tabs to notify`);
-    tabs.forEach((tab) => {
+  tabs.query({}, (tabList) => {
+    console.log(`Found ${tabList.length} tabs to notify`);
+    tabList.forEach((tab) => {
       if (tab.id) {
         console.log(`Sending reload message to tab ${tab.id}: ${tab.url}`);
-        chrome.tabs
+        tabs
           .sendMessage(tab.id, { action: "reloadConfiguration" })
-          .then((response) => {
+          .then((response: unknown) => {
             console.log(`Tab ${tab.id} responded:`, response);
           })
-          .catch((error) => {
+          .catch((error: unknown) => {
             console.log(
               `Tab ${tab.id} error (may not have content script):`,
-              error.message,
+              (error as Error).message,
             );
           });
       }
@@ -102,7 +73,7 @@ async function notifyTabsToReload(): Promise<void> {
  * Get current tab URL
  */
 export function getCurrentTabUrl(callback: (url: string) => void): void {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs[0]?.url) {
       callback(tabs[0].url);
     }

@@ -1,173 +1,101 @@
 import {
   test,
   expect,
-  chromium,
   type BrowserContext,
   type Page,
+  type TestInfo,
 } from "@playwright/test";
-import path from "path";
-import { fileURLToPath } from "url";
-import fs from "fs";
-import os from "os";
+import {
+  launchTestBrowser,
+  setupTestPage,
+  setupTestStorage,
+  getContentScriptInjector,
+  getExtensionPath,
+  type BrowserType,
+} from "./test-browser";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const extensionPath = path.join(__dirname, "../../dist");
+const TEST_CONFIG = {
+  groups: [
+    {
+      name: "Test Group",
+      iconUrl: "",
+      color: "#ff0000",
+      categories: {
+        Test: ["AAPL", "GOOGL"],
+      },
+    },
+  ],
+  urlFilters: {
+    mode: "blacklist",
+    patterns: [],
+  },
+};
 
 test.describe("Badge Rendering Test", () => {
+  test.describe.configure({ timeout: 60000 });
   let context: BrowserContext;
   let page: Page;
   let serviceWorker: any;
+  let cleanup: (() => void) | undefined;
+  let browserType: BrowserType;
 
-  test.beforeAll(async () => {
-    console.log("Extension path:", extensionPath);
-    console.log("Extension exists:", fs.existsSync(extensionPath));
-    
-    const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "pw-badge-test-"));
-    console.log("User data dir:", userDataDir);
-    
-    context = await chromium.launchPersistentContext(userDataDir, {
-      headless: false,
-      args: [
-        `--disable-extensions-except=${extensionPath}`,
-        `--load-extension=${extensionPath}`,
-      ],
-    });
+  test.beforeAll(async ({}, testInfo: TestInfo) => {
+    browserType = testInfo.project.name === "firefox" ? "firefox" : "chromium";
 
-    console.log("Browser launched");
+    console.log(`[${browserType}] Launching browser with extension`);
 
-    // Wait for service worker
-    let [background] = context.serviceWorkers();
-    if (!background) {
-      console.log("Waiting for service worker...");
-      background = await context.waitForEvent("serviceworker");
-    }
-    serviceWorker = background;
-    console.log("Service worker ready");
+    const testBrowser = await launchTestBrowser(browserType);
+    context = testBrowser.context;
+    serviceWorker = testBrowser.serviceWorker;
+    cleanup = testBrowser.cleanup;
 
-    // Grant optional host permissions so content script auto-injects
-    await serviceWorker.evaluate(() => {
-      return new Promise<void>((resolve) => {
-        console.log("Requesting host permissions...");
-        chrome.permissions.request(
-          { origins: ["<all_urls>"] },
-          (granted) => {
-            console.log("Permissions granted:", granted);
-            resolve();
-          }
-        );
-      });
-    });
+    console.log(`[${browserType}] Browser launched`);
 
-    // Configure extension
-    await serviceWorker.evaluate(() => {
-      return new Promise<void>((resolve) => {
-        console.log("Setting storage...");
-        chrome.storage.sync.set(
-          {
-            symbolMarkerConfig: {
-              groups: [
-                {
-                  name: "Test Group",
-                  iconUrl: "",
-                  color: "#ff0000",
-                  categories: {
-                    Test: ["AAPL", "GOOGL"],
-                  },
-                },
-              ],
-              urlFilters: {
-                mode: "blacklist",
-                patterns: [],
-              },
-            },
-          },
-          () => {
-            chrome.storage.sync.get(["symbolMarkerConfig"], (result) => {
-              console.log("Storage set successfully:", JSON.stringify(result, null, 2));
-              resolve();
-            });
-          },
-        );
-      });
-    });
+    // Setup storage for the browser
+    await setupTestStorage(browserType, serviceWorker, TEST_CONFIG);
 
     page = await context.newPage();
-    
-    // Listen to console messages
-    page.on('console', msg => {
-      const type = msg.type();
-      const text = msg.text();
-      console.log(`[PAGE ${type.toUpperCase()}]:`, text);
-    });
-    
-    // Listen to page errors
-    page.on('pageerror', error => {
-      console.log('[PAGE ERROR]:', error.message);
-    });
+    page.on("console", (msg) =>
+      console.log(`[PAGE ${msg.type()}]:`, msg.text()),
+    );
+    page.on("pageerror", (error) =>
+      console.log("[PAGE ERROR]:", error.message),
+    );
   });
 
   test.afterAll(async () => {
     await context.close();
+    if (cleanup) cleanup();
   });
 
   test("should render badge for AAPL symbol", async () => {
-    // Use the existing test page
-    const testPagePath = path.join(__dirname, "test-page.html");
-    const testPageUrl = "file://" + testPagePath;
-    
-    console.log("Test page URL:", testPageUrl);
-    await page.goto(testPageUrl);
-    console.log("Page loaded");
+    // Setup test page using abstraction
+    const pageSetup = await setupTestPage(browserType);
+    const { pageUrl, httpServer: server } = pageSetup;
 
-    // Manually inject content script since file:// URLs don't auto-inject
-    // Get the tab ID from the page
-    const pages = context.pages();
-    const targetPage = pages.find(p => p.url().includes('test-page.html'));
-    
-    if (targetPage) {
-      // Inject via service worker
-      await serviceWorker.evaluate(async () => {
-        const tabs = await chrome.tabs.query({});
-        const targetTab = tabs.find(tab => tab.url && tab.url.includes('test-page.html'));
-        
-        if (targetTab && targetTab.id) {
-          await chrome.scripting.executeScript({
-            target: { tabId: targetTab.id },
-            files: ["content/content.js"],
-          });
-          console.log("Content script injected into tab", targetTab.id);
-        }
-      });
-    }
-    
-    console.log("Content script injection attempted");
+    console.log(`[${browserType}] Test page URL:`, pageUrl);
 
-    // Wait for extension to process
+    // Navigate to the page
+    await page.goto(pageUrl);
+    await page.waitForTimeout(2000);
+
+    // Get content script injector for this browser
+    const injector = getContentScriptInjector(browserType);
+
+    // Inject content script
+    await injector.inject(page, getExtensionPath(browserType), TEST_CONFIG);
+    console.log(`[${browserType}] Content script injected`);
+
     await page.waitForTimeout(3000);
 
-    // Check if content script injected
-    const isInjected = await page.evaluate(() => {
-      return typeof (window as any).__textMarkerInjected !== 'undefined';
-    });
-    console.log("Content script injected:", isInjected);
-
-    // Check page HTML
-    const bodyHtml = await page.locator("body").innerHTML();
-    console.log("Body HTML:", bodyHtml);
-
-    // Check for badges
     const badges = await page.locator(".fool-badge").count();
-    console.log("Badge count:", badges);
-
-    // Check for any spans
-    const allSpans = await page.locator("span").count();
-    console.log("Total spans:", allSpans);
-
-    // List all elements with class containing 'badge'
-    const badgeElements = await page.locator('[class*="badge"]').count();
-    console.log("Elements with 'badge' in class:", badgeElements);
+    console.log(`[${browserType}] Badge count:`, badges);
 
     expect(badges).toBeGreaterThan(0);
+
+    // Cleanup if needed
+    if (server) {
+      server.close();
+    }
   });
 });
