@@ -9,9 +9,9 @@ import fs from "fs";
 import os from "os";
 import { fileURLToPath } from "url";
 import http from "http";
-import { FirefoxOverrides } from "./firefox/firefox_overrides";
-import { FirefoxExtensionPreferenceRepository } from "./firefox/firefox_extension_preferences";
-import * as remote from "./firefox/firefox_remote";
+import { FirefoxOverrides } from "./cross-browser/firefox/firefox_overrides";
+import { FirefoxExtensionPreferenceRepository } from "./cross-browser/firefox/firefox_extension_preferences";
+import * as remote from "./cross-browser/firefox/firefox_remote";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

@@ -41,7 +41,7 @@ import { jest } from "@jest/globals";
 };
 
 // Now import modules that depend on the Chrome API
-import { createMockStorage } from "./helpers/mock-storage";
+import { createMockStorage } from "./mocks/storage-mock";
 import { StorageService } from "../shared/storage-service";
 
 // Setup mock storage globally before any tests run

@@ -14,7 +14,8 @@ import {
 } from "../../popup/popup-storage";
 import type { SymbolMarkerConfig } from "../../types/symbol-config";
 import { StorageService } from "../../shared/storage-service";
-import { createMockStorage, createMockTabs } from "../helpers/mock-storage";
+import { createMockStorage } from "../mocks/storage-mock";
+import { createMockTabs } from "../mocks/tabs-mock";
 import type { BrowserAPI } from "../../shared/browser-api";
 
 describe("Popup Storage - Integration Tests", () => {

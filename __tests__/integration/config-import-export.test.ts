@@ -8,7 +8,7 @@ import {
   jest,
 } from "@jest/globals";
 import { StorageService } from "../..//shared/storage-service";
-import { createMockStorage } from "../helpers/mock-storage";
+import { createMockStorage } from "../mocks/storage-mock";
 import type { BrowserAPI } from "../../shared/browser-api";
 
 describe("Configuration Import/Export - Integration Tests", () => {

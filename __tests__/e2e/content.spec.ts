@@ -219,7 +219,7 @@ test.describe("Content Integration - E2E Tests", () => {
       const tooltipText = await tooltip.textContent();
       expect(tooltipText).toBeTruthy();
       expect(tooltipText!.length).toBeGreaterThan(0);
-      
+
       // The tooltip functionality is working if it exists and has content
       // Visibility may vary due to CSS implementation, but functionality is verified
       expect(tooltipCount).toBe(1);

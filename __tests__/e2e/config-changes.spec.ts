@@ -6,11 +6,6 @@ import {
   type Page,
   type TestInfo,
 } from "@playwright/test";
-import { chromium } from "@playwright/test";
-import * as fs from "fs";
-import * as path from "path";
-import { fileURLToPath } from "url";
-import * as os from "os";
 import {
   launchTestBrowser,
   setupTestPage,
@@ -18,10 +13,6 @@ import {
   getExtensionPath,
   type BrowserType as AbstractionBrowserType,
 } from "./test-browser";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const extensionPath = path.join(__dirname, "../../dist");
 
 test.describe("Configuration Changes - E2E Tests", () => {
   let context: BrowserContext;
@@ -643,17 +634,17 @@ test.describe("Browser Dark Mode - E2E Tests", () => {
   test("extension works with browser dark mode", async () => {
     // Test dark mode using the existing abstraction but with dark mode
     const browserType = "chromium";
-    
+
     const testBrowser = await launchTestBrowser(browserType);
     const context = testBrowser.context;
-    
+
     // Create page with dark mode emulation
     const pageSetup = await setupTestPage(browserType);
     const page = await context.newPage();
     await page.goto(pageSetup.pageUrl);
-    
+
     // Emulate dark mode
-    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.emulateMedia({ colorScheme: "dark" });
     await page.waitForTimeout(500);
 
     // Extension should work in dark mode

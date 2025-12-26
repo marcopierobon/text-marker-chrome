@@ -10,7 +10,7 @@ import {
 import { SymbolDetector } from "../../../content/symbol-detector";
 import { BadgeRenderer } from "../../../content/badge-renderer";
 import { StorageService } from "../../../shared/storage-service";
-import { createMockStorage } from "../../helpers/mock-storage";
+import { createMockStorage } from "../../mocks/storage-mock";
 import type { BrowserAPI } from "../../../shared/browser-api";
 
 describe("Content Script Orchestration - Advanced Tests", () => {

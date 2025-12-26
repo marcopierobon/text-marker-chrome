@@ -15,7 +15,7 @@ import {
   getPatternPreview,
 } from "../../../popup/popup-helpers";
 import type { SymbolMarkerConfig } from "../../../types/symbol-config";
-import { createMockStorage } from "../../helpers/mock-storage";
+import { createMockStorage } from "../../mocks/storage-mock";
 import { StorageService } from "../../../shared/storage-service";
 
 // Setup mock storage

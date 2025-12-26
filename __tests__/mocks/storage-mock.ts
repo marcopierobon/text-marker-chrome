@@ -31,13 +31,3 @@ export const createMockStorage = (): BrowserAPI["storage"] =>
       hasListener: jest.fn(),
     },
   }) as unknown as BrowserAPI["storage"];
-
-/**
- * Lightweight mock tabs matching BrowserAPI["tabs"] shape.
- */
-export const createMockTabs = (): BrowserAPI["tabs"] =>
-  ({
-    query: jest.fn(),
-    sendMessage: jest.fn(),
-    update: jest.fn(),
-  }) as unknown as BrowserAPI["tabs"];
