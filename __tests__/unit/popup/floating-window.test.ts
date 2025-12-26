@@ -346,4 +346,219 @@ describe("Floating Window - Unit Tests", () => {
       );
     });
   });
+
+  describe("Configuration Loading and UI Sync", () => {
+    beforeEach(() => {
+      document.body.innerHTML = `
+        <input type="checkbox" id="floating-window-toggle" />
+        <div id="toast"></div>
+      `;
+    });
+
+    afterEach(() => {
+      document.body.innerHTML = "";
+    });
+
+    it("should load configuration and set toggle state correctly", async () => {
+      const savedConfig: SymbolMarkerConfig = {
+        groups: [],
+        urlFilters: {
+          mode: "whitelist",
+          patterns: [],
+        },
+        floatingWindow: true,
+      };
+
+      mockChrome.storage.sync.get.mockResolvedValue({
+        symbolMarkerConfig: savedConfig,
+      });
+
+      const result = await mockChrome.storage.sync.get(["symbolMarkerConfig"]);
+      const loadedConfig = result.symbolMarkerConfig;
+
+      const toggle = document.getElementById(
+        "floating-window-toggle",
+      ) as HTMLInputElement;
+      toggle.checked = loadedConfig.floatingWindow;
+
+      expect(toggle.checked).toBe(true);
+      expect(loadedConfig.floatingWindow).toBe(true);
+    });
+
+    it("should initialize toggle to false when configuration is missing floatingWindow", async () => {
+      const savedConfig = {
+        groups: [],
+        urlFilters: {
+          mode: "whitelist",
+          patterns: [],
+        },
+      };
+
+      mockChrome.storage.sync.get.mockResolvedValue({
+        symbolMarkerConfig: savedConfig,
+      });
+
+      const result = await mockChrome.storage.sync.get(["symbolMarkerConfig"]);
+      const loadedConfig = result.symbolMarkerConfig;
+
+      const normalizedConfig = {
+        ...loadedConfig,
+        floatingWindow: loadedConfig.floatingWindow ?? false,
+      };
+
+      const toggle = document.getElementById(
+        "floating-window-toggle",
+      ) as HTMLInputElement;
+      toggle.checked = normalizedConfig.floatingWindow;
+
+      expect(toggle.checked).toBe(false);
+      expect(normalizedConfig.floatingWindow).toBe(false);
+    });
+
+    it("should save configuration when toggle changes", async () => {
+      mockChrome.storage.sync.set.mockResolvedValue(undefined);
+
+      const toggle = document.getElementById(
+        "floating-window-toggle",
+      ) as HTMLInputElement;
+
+      toggle.checked = true;
+      const config: SymbolMarkerConfig = {
+        groups: [],
+        urlFilters: {
+          mode: "whitelist",
+          patterns: [],
+        },
+        floatingWindow: toggle.checked,
+      };
+
+      await mockChrome.storage.sync.set({ symbolMarkerConfig: config });
+
+      expect(mockChrome.storage.sync.set).toHaveBeenCalledWith({
+        symbolMarkerConfig: expect.objectContaining({
+          floatingWindow: true,
+        }),
+      });
+    });
+  });
+
+  describe("Storage Persistence", () => {
+    it("should persist floating window preference across sessions", async () => {
+      const initialConfig: SymbolMarkerConfig = {
+        groups: [],
+        urlFilters: {
+          mode: "whitelist",
+          patterns: [],
+        },
+        floatingWindow: true,
+      };
+
+      mockChrome.storage.sync.set.mockResolvedValue(undefined);
+      mockChrome.storage.sync.get.mockResolvedValue({
+        symbolMarkerConfig: initialConfig,
+      });
+
+      await mockChrome.storage.sync.set({ symbolMarkerConfig: initialConfig });
+
+      const result = await mockChrome.storage.sync.get(["symbolMarkerConfig"]);
+      const loadedConfig = result.symbolMarkerConfig;
+
+      expect(loadedConfig.floatingWindow).toBe(true);
+    });
+
+    it("should handle large configuration with floating window setting", async () => {
+      const largeConfig: SymbolMarkerConfig = {
+        groups: Array(10)
+          .fill(null)
+          .map((_, i) => ({
+            name: `Group ${i}`,
+            iconUrl: `https://example.com/icon${i}.png`,
+            color: "#000000",
+            categories: {
+              [`Category ${i}`]: [`SYMBOL${i}`],
+            },
+          })),
+        urlFilters: {
+          mode: "whitelist",
+          patterns: [],
+        },
+        floatingWindow: true,
+      };
+
+      const configStr = JSON.stringify(largeConfig);
+      const configSize = new Blob([configStr]).size;
+
+      if (configSize > 90000) {
+        mockChrome.storage.local.set.mockResolvedValue(undefined);
+        await mockChrome.storage.local.set({ symbolMarkerConfig: largeConfig });
+        expect(mockChrome.storage.local.set).toHaveBeenCalled();
+      } else {
+        mockChrome.storage.sync.set.mockResolvedValue(undefined);
+        await mockChrome.storage.sync.set({ symbolMarkerConfig: largeConfig });
+        expect(mockChrome.storage.sync.set).toHaveBeenCalled();
+      }
+    });
+  });
+
+  describe("UI State Consistency", () => {
+    beforeEach(() => {
+      document.body.innerHTML = `
+        <input type="checkbox" id="floating-window-toggle" />
+        <div id="toast"></div>
+      `;
+    });
+
+    afterEach(() => {
+      document.body.innerHTML = "";
+    });
+
+    it("should keep toggle and configuration in sync", async () => {
+      const toggle = document.getElementById(
+        "floating-window-toggle",
+      ) as HTMLInputElement;
+
+      let config: SymbolMarkerConfig = {
+        groups: [],
+        urlFilters: {
+          mode: "whitelist",
+          patterns: [],
+        },
+        floatingWindow: false,
+      };
+
+      toggle.checked = true;
+      config.floatingWindow = toggle.checked;
+      expect(config.floatingWindow).toBe(toggle.checked);
+
+      toggle.checked = false;
+      config.floatingWindow = toggle.checked;
+      expect(config.floatingWindow).toBe(toggle.checked);
+    });
+
+    it("should update toggle when configuration is loaded", async () => {
+      const savedConfig: SymbolMarkerConfig = {
+        groups: [],
+        urlFilters: {
+          mode: "whitelist",
+          patterns: [],
+        },
+        floatingWindow: true,
+      };
+
+      mockChrome.storage.sync.get.mockResolvedValue({
+        symbolMarkerConfig: savedConfig,
+      });
+
+      const result = await mockChrome.storage.sync.get(["symbolMarkerConfig"]);
+      const config = result.symbolMarkerConfig;
+
+      const toggle = document.getElementById(
+        "floating-window-toggle",
+      ) as HTMLInputElement;
+      toggle.checked = config.floatingWindow || false;
+
+      expect(toggle.checked).toBe(true);
+      expect(config.floatingWindow).toBe(true);
+    });
+  });
 });

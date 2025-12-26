@@ -1,7 +1,7 @@
 // Integration tests for Performance and Complex Layouts
 import { describe, test, expect, beforeEach } from "@jest/globals";
-import { SymbolDetector } from "../..//content/symbol-detector";
-import { BadgeRenderer } from "../..//content/badge-renderer";
+import { SymbolDetector } from "../../../content/symbol-detector";
+import { BadgeRenderer } from "../../../content/badge-renderer";
 
 describe("Performance and Complex Layouts - Integration Tests", () => {
   let detector: SymbolDetector;

@@ -5,6 +5,14 @@ import type {
   SymbolGroup,
   CategoryValue,
 } from "../types/symbol-config";
+import {
+  permissions,
+  windows,
+  storage,
+  tabs,
+  systemDisplay,
+  getURL,
+} from "../shared/browser-api";
 
 let configuration: SymbolMarkerConfig = {
   groups: [],
@@ -20,7 +28,7 @@ let currentGroupIndex: number = -1;
 
 // Permissions management functions
 async function updatePermissionsStatus(): Promise<void> {
-  const hasPermissions = await chrome.permissions.contains({
+  const hasPermissions = await permissions.contains({
     origins: ["<all_urls>"],
   });
 
@@ -45,7 +53,7 @@ async function updatePermissionsStatus(): Promise<void> {
 
 async function requestHostPermissions(): Promise<void> {
   try {
-    const granted = await chrome.permissions.request({
+    const granted = await permissions.request({
       origins: ["<all_urls>"],
     });
 
@@ -67,7 +75,7 @@ async function requestHostPermissions(): Promise<void> {
 
 async function revokeHostPermissions(): Promise<void> {
   try {
-    const removed = await chrome.permissions.remove({
+    const removed = await permissions.remove({
       origins: ["<all_urls>"],
     });
 
@@ -92,7 +100,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   console.log("🚀 Popup initializing...");
 
   // Check what type of window we're in
-  const currentWindow = await chrome.windows.getCurrent();
+  const currentWindow = await windows.getCurrent();
   console.log("🪟 Window type on open:", currentWindow.type);
 
   await loadConfiguration();
@@ -109,13 +117,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 async function loadConfiguration(): Promise<void> {
   try {
     // Try sync storage first
-    let result = await chrome.storage.sync.get(["symbolMarkerConfig"]);
+    let result = await storage.sync.get(["symbolMarkerConfig"]);
 
     if (result.symbolMarkerConfig) {
       configuration = result.symbolMarkerConfig as SymbolMarkerConfig;
     } else {
       // Fallback to local storage
-      result = await chrome.storage.local.get(["symbolMarkerConfig"]);
+      result = await storage.local.get(["symbolMarkerConfig"]);
 
       if (result.symbolMarkerConfig) {
         configuration = result.symbolMarkerConfig as SymbolMarkerConfig;
@@ -158,11 +166,11 @@ async function saveConfigurationToStorage(): Promise<boolean> {
       console.log(
         "Configuration too large for sync storage, using local storage",
       );
-      await chrome.storage.local.set({ symbolMarkerConfig: configuration });
+      await storage.local.set({ symbolMarkerConfig: configuration });
       // Clear from sync if it was there
-      await chrome.storage.sync.remove(["symbolMarkerConfig"]);
+      await storage.sync.remove(["symbolMarkerConfig"]);
     } else {
-      await chrome.storage.sync.set({ symbolMarkerConfig: configuration });
+      await storage.sync.set({ symbolMarkerConfig: configuration });
     }
 
     console.log("✅ Configuration saved to storage");
@@ -172,12 +180,12 @@ async function saveConfigurationToStorage(): Promise<boolean> {
 
     // Notify content scripts to reload configuration
     console.log("📢 Notifying tabs to reload configuration");
-    chrome.tabs.query({}, (tabs) => {
-      console.log(`Found ${tabs.length} tabs to notify`);
-      tabs.forEach((tab) => {
+    tabs.query({}, (tabsList) => {
+      console.log(`Found ${tabsList.length} tabs to notify`);
+      tabsList.forEach((tab) => {
         if (tab.id) {
           console.log(`Sending reload message to tab ${tab.id}: ${tab.url}`);
-          chrome.tabs
+          tabs
             .sendMessage(tab.id, { action: "reloadConfiguration" })
             .then((response) => {
               console.log(`Tab ${tab.id} responded:`, response);
@@ -196,7 +204,7 @@ async function saveConfigurationToStorage(): Promise<boolean> {
     console.error("Error saving configuration:", error);
     // Fallback to local storage
     try {
-      await chrome.storage.local.set({ symbolMarkerConfig: configuration });
+      await storage.local.set({ symbolMarkerConfig: configuration });
       console.log("✅ Configuration saved to local storage (fallback)");
       return true;
     } catch (localError) {
@@ -801,7 +809,7 @@ async function convertToFloatingWindow(): Promise<boolean> {
   console.log("🔄 convertToFloatingWindow() called");
   try {
     // Get screen dimensions to make height responsive
-    const displays = await chrome.system.display.getInfo();
+    const displays = await systemDisplay.getInfo();
     const primaryDisplay = displays[0];
     const availableHeight = primaryDisplay.workArea.height;
 
@@ -814,8 +822,8 @@ async function convertToFloatingWindow(): Promise<boolean> {
     });
 
     // Create a new persistent floating window with responsive height
-    const newWindow = await chrome.windows.create({
-      url: chrome.runtime.getURL("popup/popup.html"),
+    const newWindow = await windows.create({
+      url: getURL("popup/popup.html"),
       type: "normal", // Normal window type persists and doesn't auto-close
       width: 800,
       height: windowHeight,
@@ -833,9 +841,9 @@ async function convertToFloatingWindow(): Promise<boolean> {
     }
 
     // Switch focus to the current tab to make popup lose focus and close naturally
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]?.id) {
-        chrome.tabs.update(tabs[0].id, { active: true });
+    tabs.query({ active: true, currentWindow: true }, (tabsList) => {
+      if (tabsList[0]?.id) {
+        tabs.update(tabsList[0].id, { active: true });
         console.log("Switched focus to current tab");
       }
     });
@@ -864,9 +872,9 @@ function showToast(
 
 // URL Filtering Functions
 function getCurrentTabUrl(callback: (url: string) => void): void {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0]?.url) {
-      callback(tabs[0].url);
+  tabs.query({ active: true, currentWindow: true }, (tabsList) => {
+    if (tabsList[0]?.url) {
+      callback(tabsList[0].url);
     }
   });
 }

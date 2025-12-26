@@ -2,7 +2,9 @@
 // Coordinates symbol detection, badge rendering, and configuration management
 
 // Mark that content script has been injected
-(window as any).__textMarkerInjected = true;
+(
+  window as typeof window & { __textMarkerInjected: boolean }
+).__textMarkerInjected = true;
 
 import { SymbolDetector } from "./symbol-detector";
 import { BadgeRenderer } from "./badge-renderer";
@@ -11,6 +13,7 @@ import { debounce } from "../utils/debounce";
 import { createLogger } from "../shared/logger";
 import type { SymbolMarkerConfig, UrlPattern } from "../types/symbol-config";
 import type { ChromeMessage, SendResponse } from "../types/chrome-extension";
+import { runtime } from "../shared/browser-api";
 
 const log = createLogger("ContentScript");
 
@@ -223,7 +226,7 @@ class ContentScript {
    * Set up message listener for configuration reload
    */
   setupMessageListener(): void {
-    chrome.runtime.onMessage.addListener(
+    runtime.onMessage.addListener(
       (
         request: ChromeMessage,
         _sender: chrome.runtime.MessageSender,

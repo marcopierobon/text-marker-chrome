@@ -1,4 +1,53 @@
 // Test setup to suppress expected console errors
+import { jest } from "@jest/globals";
+
+// Setup minimal Chrome API for browser-api polyfill detection BEFORE any imports
+(global as any).chrome = {
+  storage: {
+    sync: {
+      get: jest.fn(),
+      set: jest.fn(),
+      remove: jest.fn(),
+      clear: jest.fn(),
+    },
+    local: {
+      get: jest.fn(),
+      set: jest.fn(),
+      remove: jest.fn(),
+      clear: jest.fn(),
+    },
+  },
+  runtime: {
+    sendMessage: jest.fn(),
+    getURL: jest.fn(() => "chrome-extension://test/"),
+  },
+  tabs: {
+    query: jest.fn(),
+    sendMessage: jest.fn(),
+    update: jest.fn(),
+  },
+  windows: {
+    getCurrent: jest.fn(),
+  },
+  permissions: {
+    request: jest.fn(),
+  },
+  scripting: {
+    executeScript: jest.fn(),
+  },
+  action: {
+    setBadgeText: jest.fn(),
+  },
+};
+
+// Now import modules that depend on the Chrome API
+import { createMockStorage } from "./mocks/storage-mock";
+import { StorageService } from "../shared/storage-service";
+
+// Setup mock storage globally before any tests run
+const mockStorage = createMockStorage();
+StorageService.setStorageAPI(mockStorage);
+
 const originalConsole = {
   error: console.error,
   warn: console.warn,

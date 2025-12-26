@@ -85,7 +85,9 @@ test.describe("Floating Window E2E Tests", () => {
     const page = await context.newPage();
     page.on("console", (msg) => console.log("PAGE LOG:", msg.text()));
 
-    await page.goto(`file://${join(__dirname, "../../dist/popup/popup.html")}`);
+    await page.goto(
+      `file://${join(__dirname, "../../dist/chrome/popup/popup.html")}`,
+    );
     await page.waitForLoadState("domcontentloaded");
 
     // Navigate to Settings tab
@@ -155,7 +157,9 @@ test.describe("Floating Window E2E Tests", () => {
     });
 
     const page = await context.newPage();
-    await page.goto(`file://${join(__dirname, "../../dist/popup/popup.html")}`);
+    await page.goto(
+      `file://${join(__dirname, "../../dist/chrome/popup/popup.html")}`,
+    );
     await page.waitForLoadState("domcontentloaded");
 
     // Navigate to Settings tab and click button
@@ -175,7 +179,9 @@ test.describe("Floating Window E2E Tests", () => {
     context,
   }) => {
     const page = await context.newPage();
-    await page.goto(`file://${join(__dirname, "../../dist/popup/popup.html")}`);
+    await page.goto(
+      `file://${join(__dirname, "../../dist/chrome/popup/popup.html")}`,
+    );
     await page.waitForLoadState("domcontentloaded");
 
     // Navigate to Settings tab

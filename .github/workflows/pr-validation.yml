@@ -57,7 +57,13 @@ jobs:
       - name: Run integration tests
         run: npm test -- __tests__/integration
 
-      - name: Run E2E tests
+      - name: Build Chrome extension
+        run: npm run build
+
+      - name: Build Firefox extension
+        run: npm run build:firefox
+
+      - name: Run E2E tests (Chrome and Firefox in parallel)
         run: npm run test:e2e
 
       - name: Run coverage and generate report

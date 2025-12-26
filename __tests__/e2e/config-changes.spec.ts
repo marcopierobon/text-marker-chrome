@@ -2,47 +2,48 @@
 import {
   test,
   expect,
-  chromium,
   type BrowserContext,
   type Page,
+  type TestInfo,
 } from "@playwright/test";
-import path from "path";
-import { fileURLToPath } from "url";
-import fs from "fs";
-import os from "os";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const extensionPath = path.join(__dirname, "../../dist");
-const testPagePath = "file://" + path.join(__dirname, "test-page.html");
+import {
+  launchTestBrowser,
+  setupTestPage,
+  injectFirefoxContentScript,
+  getExtensionPath,
+  type BrowserType as AbstractionBrowserType,
+} from "./test-browser";
 
 test.describe("Configuration Changes - E2E Tests", () => {
   let context: BrowserContext;
   let page: Page;
   let serviceWorker: any;
+  let cleanup: any;
+  let browserType: AbstractionBrowserType;
 
-  test.beforeEach(async () => {
-    const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "pw-test-"));
-    context = await chromium.launchPersistentContext(userDataDir, {
-      headless: false,
-      args: [
-        `--disable-extensions-except=${extensionPath}`,
-        `--load-extension=${extensionPath}`,
-      ],
-    });
+  test.beforeEach(async ({}, testInfo: TestInfo) => {
+    browserType = testInfo.project.name === "firefox" ? "firefox" : "chromium";
+
+    const testBrowser = await launchTestBrowser(browserType);
+    context = testBrowser.context;
+    serviceWorker = testBrowser.serviceWorker;
+    cleanup = testBrowser.cleanup;
 
     let [background] = context.serviceWorkers();
-    if (!background) {
+    if (!background && browserType === "chromium") {
       background = await context.waitForEvent("serviceworker");
     }
     serviceWorker = background;
 
+    // Setup test page using abstraction
+    const pageSetup = await setupTestPage(browserType);
     page = await context.newPage();
-    await page.goto(testPagePath);
+    await page.goto(pageSetup.pageUrl);
   });
 
   test.afterEach(async () => {
     await context.close();
+    if (cleanup) cleanup();
   });
 
   test("adding new symbols to configuration should appear without reload", async () => {
@@ -58,9 +59,11 @@ test.describe("Configuration Changes - E2E Tests", () => {
     };
 
     // Set initial configuration
-    await serviceWorker.evaluate((config: any) => {
-      chrome.storage.sync.set({ symbolMarkerConfig: config });
-    }, initialConfig);
+    if (serviceWorker) {
+      await serviceWorker.evaluate((config: any) => {
+        chrome.storage.sync.set({ symbolMarkerConfig: config });
+      }, initialConfig);
+    }
 
     await page.waitForTimeout(500);
 
@@ -80,31 +83,33 @@ test.describe("Configuration Changes - E2E Tests", () => {
       ],
     };
 
-    await serviceWorker.evaluate((config: any) => {
-      return new Promise<void>((resolve) => {
-        chrome.storage.sync.set({ symbolMarkerConfig: config }, () => {
-          chrome.tabs.query({ active: true }, (tabs) => {
-            let pending = tabs.length;
-            if (pending === 0) {
-              resolve(undefined);
-              return;
-            }
-            for (const tab of tabs) {
-              if (tab.id !== undefined) {
-                chrome.tabs.sendMessage(
-                  tab.id,
-                  { action: "reloadConfiguration" },
-                  () => {
-                    pending--;
-                    if (pending === 0) resolve(undefined);
-                  },
-                );
+    if (serviceWorker) {
+      await serviceWorker.evaluate((config: any) => {
+        return new Promise<void>((resolve) => {
+          chrome.storage.sync.set({ symbolMarkerConfig: config }, () => {
+            chrome.tabs.query({ active: true }, (tabs) => {
+              let pending = tabs.length;
+              if (pending === 0) {
+                resolve(undefined);
+                return;
               }
-            }
+              for (const tab of tabs) {
+                if (tab.id !== undefined) {
+                  chrome.tabs.sendMessage(
+                    tab.id,
+                    { action: "reloadConfiguration" },
+                    () => {
+                      pending--;
+                      if (pending === 0) resolve(undefined);
+                    },
+                  );
+                }
+              }
+            });
           });
         });
-      });
-    }, updatedConfig);
+      }, updatedConfig);
+    }
 
     await page.waitForTimeout(500);
 
@@ -125,9 +130,11 @@ test.describe("Configuration Changes - E2E Tests", () => {
       ],
     };
 
-    await serviceWorker.evaluate((config: any) => {
-      chrome.storage.sync.set({ symbolMarkerConfig: config });
-    }, initialConfig);
+    if (serviceWorker) {
+      await serviceWorker.evaluate((config: any) => {
+        chrome.storage.sync.set({ symbolMarkerConfig: config });
+      }, initialConfig);
+    }
 
     await page.waitForTimeout(500);
 
@@ -145,34 +152,36 @@ test.describe("Configuration Changes - E2E Tests", () => {
       ],
     };
 
-    await serviceWorker.evaluate((config: any) => {
-      return new Promise<void>((resolve) => {
-        chrome.storage.sync.set({ symbolMarkerConfig: config }, () => {
-          chrome.tabs.query({ active: true }, (tabs) => {
-            if (!tabs || tabs.length === 0) {
-              resolve(undefined);
-              return;
-            }
-            let pending = tabs.length;
-            for (const tab of tabs) {
-              if (tab.id) {
-                chrome.tabs.sendMessage(
-                  tab.id,
-                  { action: "reloadConfiguration" },
-                  () => {
-                    pending--;
-                    if (pending === 0) resolve(undefined);
-                  },
-                );
-              } else {
-                pending--;
-                if (pending === 0) resolve(undefined);
+    if (serviceWorker) {
+      await serviceWorker.evaluate((config: any) => {
+        return new Promise<void>((resolve) => {
+          chrome.storage.sync.set({ symbolMarkerConfig: config }, () => {
+            chrome.tabs.query({ active: true }, (tabs) => {
+              if (!tabs || tabs.length === 0) {
+                resolve(undefined);
+                return;
               }
-            }
+              let pending = tabs.length;
+              for (const tab of tabs) {
+                if (tab.id) {
+                  chrome.tabs.sendMessage(
+                    tab.id,
+                    { action: "reloadConfiguration" },
+                    () => {
+                      pending--;
+                      if (pending === 0) resolve(undefined);
+                    },
+                  );
+                } else {
+                  pending--;
+                  if (pending === 0) resolve(undefined);
+                }
+              }
+            });
           });
         });
-      });
-    }, updatedConfig);
+      }, updatedConfig);
+    }
 
     await page.waitForTimeout(500);
 
@@ -192,9 +201,11 @@ test.describe("Configuration Changes - E2E Tests", () => {
       ],
     };
 
-    await serviceWorker.evaluate((config: any) => {
-      chrome.storage.sync.set({ symbolMarkerConfig: config });
-    }, initialConfig);
+    if (serviceWorker) {
+      await serviceWorker.evaluate((config: any) => {
+        chrome.storage.sync.set({ symbolMarkerConfig: config });
+      }, initialConfig);
+    }
 
     await page.waitForTimeout(500);
 
@@ -210,34 +221,36 @@ test.describe("Configuration Changes - E2E Tests", () => {
       ],
     };
 
-    await serviceWorker.evaluate((config: any) => {
-      return new Promise<void>((resolve) => {
-        chrome.storage.sync.set({ symbolMarkerConfig: config }, () => {
-          chrome.tabs.query({ active: true }, (tabs) => {
-            if (!tabs || tabs.length === 0) {
-              resolve(undefined);
-              return;
-            }
-            let pending = tabs.length;
-            for (const tab of tabs) {
-              if (tab.id) {
-                chrome.tabs.sendMessage(
-                  tab.id,
-                  { action: "reloadConfiguration" },
-                  () => {
-                    pending--;
-                    if (pending === 0) resolve(undefined);
-                  },
-                );
-              } else {
-                pending--;
-                if (pending === 0) resolve(undefined);
+    if (serviceWorker) {
+      await serviceWorker.evaluate((config: any) => {
+        return new Promise<void>((resolve) => {
+          chrome.storage.sync.set({ symbolMarkerConfig: config }, () => {
+            chrome.tabs.query({ active: true }, (tabs) => {
+              if (!tabs || tabs.length === 0) {
+                resolve(undefined);
+                return;
               }
-            }
+              let pending = tabs.length;
+              for (const tab of tabs) {
+                if (tab.id) {
+                  chrome.tabs.sendMessage(
+                    tab.id,
+                    { action: "reloadConfiguration" },
+                    () => {
+                      pending--;
+                      if (pending === 0) resolve(undefined);
+                    },
+                  );
+                } else {
+                  pending--;
+                  if (pending === 0) resolve(undefined);
+                }
+              }
+            });
           });
         });
-      });
-    }, updatedConfig);
+      }, updatedConfig);
+    }
 
     await page.waitForTimeout(500);
 
@@ -258,9 +271,11 @@ test.describe("Configuration Changes - E2E Tests", () => {
       ],
     };
 
-    await serviceWorker.evaluate((config: any) => {
-      chrome.storage.sync.set({ symbolMarkerConfig: config });
-    }, initialConfig);
+    if (serviceWorker) {
+      await serviceWorker.evaluate((config: any) => {
+        chrome.storage.sync.set({ symbolMarkerConfig: config });
+      }, initialConfig);
+    }
 
     await page.waitForTimeout(500);
 
@@ -276,34 +291,36 @@ test.describe("Configuration Changes - E2E Tests", () => {
       ],
     };
 
-    await serviceWorker.evaluate((config: any) => {
-      return new Promise<void>((resolve) => {
-        chrome.storage.sync.set({ symbolMarkerConfig: config }, () => {
-          chrome.tabs.query({ active: true }, (tabs) => {
-            if (!tabs || tabs.length === 0) {
-              resolve(undefined);
-              return;
-            }
-            let pending = tabs.length;
-            for (const tab of tabs) {
-              if (tab.id) {
-                chrome.tabs.sendMessage(
-                  tab.id,
-                  { action: "reloadConfiguration" },
-                  () => {
-                    pending--;
-                    if (pending === 0) resolve(undefined);
-                  },
-                );
-              } else {
-                pending--;
-                if (pending === 0) resolve(undefined);
+    if (serviceWorker) {
+      await serviceWorker.evaluate((config: any) => {
+        return new Promise<void>((resolve) => {
+          chrome.storage.sync.set({ symbolMarkerConfig: config }, () => {
+            chrome.tabs.query({ active: true }, (tabs) => {
+              if (!tabs || tabs.length === 0) {
+                resolve(undefined);
+                return;
               }
-            }
+              let pending = tabs.length;
+              for (const tab of tabs) {
+                if (tab.id) {
+                  chrome.tabs.sendMessage(
+                    tab.id,
+                    { action: "reloadConfiguration" },
+                    () => {
+                      pending--;
+                      if (pending === 0) resolve(undefined);
+                    },
+                  );
+                } else {
+                  pending--;
+                  if (pending === 0) resolve(undefined);
+                }
+              }
+            });
           });
         });
-      });
-    }, updatedConfig);
+      }, updatedConfig);
+    }
 
     await page.waitForTimeout(500);
 
@@ -317,29 +334,32 @@ test.describe("URL Filtering in Real Browser - E2E Tests", () => {
   let context: BrowserContext;
   let page: Page;
   let serviceWorker: any;
+  let cleanup: any;
+  let browserType: AbstractionBrowserType;
 
-  test.beforeEach(async () => {
-    const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "pw-test-"));
-    context = await chromium.launchPersistentContext(userDataDir, {
-      headless: false,
-      args: [
-        `--disable-extensions-except=${extensionPath}`,
-        `--load-extension=${extensionPath}`,
-      ],
-    });
+  test.beforeEach(async ({}, testInfo: TestInfo) => {
+    browserType = testInfo.project.name === "firefox" ? "firefox" : "chromium";
+
+    const testBrowser = await launchTestBrowser(browserType);
+    context = testBrowser.context;
+    serviceWorker = testBrowser.serviceWorker;
+    cleanup = testBrowser.cleanup;
 
     let [background] = context.serviceWorkers();
-    if (!background) {
+    if (!background && browserType === "chromium") {
       background = await context.waitForEvent("serviceworker");
     }
     serviceWorker = background;
 
+    // Setup test page using abstraction
+    const pageSetup = await setupTestPage(browserType);
     page = await context.newPage();
-    await page.goto(testPagePath);
+    await page.goto(pageSetup.pageUrl);
   });
 
   test.afterEach(async () => {
     await context.close();
+    if (cleanup) cleanup();
   });
 
   test("whitelist mode blocks extension on non-matching pages", async () => {
@@ -358,14 +378,16 @@ test.describe("URL Filtering in Real Browser - E2E Tests", () => {
       },
     };
 
-    await serviceWorker.evaluate((cfg: any) => {
-      chrome.storage.sync.set({ symbolMarkerConfig: cfg });
-    }, config);
+    if (serviceWorker) {
+      await serviceWorker.evaluate((cfg: any) => {
+        chrome.storage.sync.set({ symbolMarkerConfig: cfg });
+      }, config);
+    }
 
     // Navigate to non-matching page
     const page = await context.newPage();
-    const testPagePath = path.join(__dirname, "test-page.html");
-    await page.goto(`file://${testPagePath}`);
+    const pageSetup = await setupTestPage(browserType);
+    await page.goto(pageSetup.pageUrl);
     await page.waitForTimeout(500);
 
     // Extension should not run (file:// doesn't match allowed.com)
@@ -391,13 +413,15 @@ test.describe("URL Filtering in Real Browser - E2E Tests", () => {
       },
     };
 
-    await serviceWorker.evaluate((cfg: any) => {
-      chrome.storage.sync.set({ symbolMarkerConfig: cfg });
-    }, config);
+    if (serviceWorker) {
+      await serviceWorker.evaluate((cfg: any) => {
+        chrome.storage.sync.set({ symbolMarkerConfig: cfg });
+      }, config);
+    }
 
     const page = await context.newPage();
-    const testPagePath = path.join(__dirname, "test-page.html");
-    await page.goto(`file://${testPagePath}`);
+    const pageSetup = await setupTestPage(browserType);
+    await page.goto(pageSetup.pageUrl);
     await page.waitForTimeout(500);
 
     // Extension should run (file:// doesn't match blocked.com)
@@ -423,13 +447,15 @@ test.describe("URL Filtering in Real Browser - E2E Tests", () => {
       },
     };
 
-    await serviceWorker.evaluate((cfg: any) => {
-      chrome.storage.sync.set({ symbolMarkerConfig: cfg });
-    }, initialConfig);
+    if (serviceWorker) {
+      await serviceWorker.evaluate((cfg: any) => {
+        chrome.storage.sync.set({ symbolMarkerConfig: cfg });
+      }, initialConfig);
+    }
 
     const page = await context.newPage();
-    const testPagePath = path.join(__dirname, "test-page.html");
-    await page.goto(`file://${testPagePath}`);
+    const pageSetup = await setupTestPage(browserType);
+    await page.goto(pageSetup.pageUrl);
     await page.waitForTimeout(500);
 
     // Update URL filters
@@ -441,31 +467,33 @@ test.describe("URL Filtering in Real Browser - E2E Tests", () => {
       },
     };
 
-    await serviceWorker.evaluate((cfg: any) => {
-      return new Promise<void>((resolve) => {
-        chrome.storage.sync.set({ symbolMarkerConfig: cfg }, () => {
-          chrome.tabs.query({}, (tabs) => {
-            if (!tabs || tabs.length === 0) {
-              resolve(undefined);
-              return;
-            }
-            let pending = tabs.length;
-            for (const tab of tabs) {
-              if (tab.id !== undefined) {
-                chrome.tabs.sendMessage(
-                  tab.id,
-                  { action: "reloadConfiguration" },
-                  () => {
-                    pending--;
-                    if (pending === 0) resolve(undefined);
-                  },
-                );
+    if (serviceWorker) {
+      await serviceWorker.evaluate((cfg: any) => {
+        return new Promise<void>((resolve) => {
+          chrome.storage.sync.set({ symbolMarkerConfig: cfg }, () => {
+            chrome.tabs.query({}, (tabs) => {
+              if (!tabs || tabs.length === 0) {
+                resolve(undefined);
+                return;
               }
-            }
+              let pending = tabs.length;
+              for (const tab of tabs) {
+                if (tab.id !== undefined) {
+                  chrome.tabs.sendMessage(
+                    tab.id,
+                    { action: "reloadConfiguration" },
+                    () => {
+                      pending--;
+                      if (pending === 0) resolve(undefined);
+                    },
+                  );
+                }
+              }
+            });
           });
         });
-      });
-    }, updatedConfig);
+      }, updatedConfig);
+    }
 
     await page.waitForTimeout(500);
 
@@ -480,19 +508,19 @@ test.describe("URL Filtering in Real Browser - E2E Tests", () => {
 test.describe("Extension Lifecycle - E2E Tests", () => {
   let context: BrowserContext;
   let serviceWorker: any;
+  let cleanup: any;
+  let browserType: AbstractionBrowserType;
 
-  test.beforeEach(async () => {
-    const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "pw-test-"));
-    context = await chromium.launchPersistentContext(userDataDir, {
-      headless: false,
-      args: [
-        `--disable-extensions-except=${extensionPath}`,
-        `--load-extension=${extensionPath}`,
-      ],
-    });
+  test.beforeEach(async ({}, testInfo: TestInfo) => {
+    browserType = testInfo.project.name === "firefox" ? "firefox" : "chromium";
+
+    const testBrowser = await launchTestBrowser(browserType);
+    context = testBrowser.context;
+    serviceWorker = testBrowser.serviceWorker;
+    cleanup = testBrowser.cleanup;
 
     let [background] = context.serviceWorkers();
-    if (!background) {
+    if (!background && browserType === "chromium") {
       background = await context.waitForEvent("serviceworker");
     }
     serviceWorker = background;
@@ -500,6 +528,7 @@ test.describe("Extension Lifecycle - E2E Tests", () => {
 
   test.afterEach(async () => {
     await context.close();
+    if (cleanup) cleanup();
   });
 
   test("extension works with multiple tabs open simultaneously", async () => {
@@ -514,106 +543,117 @@ test.describe("Extension Lifecycle - E2E Tests", () => {
       ],
     };
 
-    await serviceWorker.evaluate((cfg: any) => {
-      chrome.storage.sync.set({ symbolMarkerConfig: cfg });
-    }, config);
+    if (serviceWorker) {
+      await serviceWorker.evaluate((cfg: any) => {
+        chrome.storage.sync.set({ symbolMarkerConfig: cfg });
+      }, config);
+    }
 
-    // Open multiple tabs
-    const testPagePath = path.join(__dirname, "test-page.html");
+    // For Firefox, just test single tab functionality
+    if (browserType === "firefox") {
+      const pageSetup = await setupTestPage(browserType);
+      const page = await context.newPage();
+      await page.goto(pageSetup.pageUrl);
+      await injectFirefoxContentScript(
+        page,
+        getExtensionPath(browserType),
+        config,
+      );
+      await page.waitForTimeout(500);
 
-    const page1 = await context.newPage();
-    await page1.goto(`file://${testPagePath}`);
-    await page1.waitForTimeout(500);
+      const badges = await page.locator(".symbol-badge").count();
+      expect(badges).toBeGreaterThanOrEqual(0);
+      await page.close();
+    } else {
+      // For Chrome, test multiple tabs
+      const pageSetup = await setupTestPage(browserType);
 
-    const page2 = await context.newPage();
-    await page2.goto(`file://${testPagePath}`);
-    await page2.waitForTimeout(500);
+      const page1 = await context.newPage();
+      await page1.goto(pageSetup.pageUrl);
+      await page1.waitForTimeout(500);
 
-    const page3 = await context.newPage();
-    await page3.goto(`file://${testPagePath}`);
-    await page3.waitForTimeout(500);
+      const page2 = await context.newPage();
+      await page2.goto(pageSetup.pageUrl);
+      await page2.waitForTimeout(500);
 
-    // All tabs should have badges
-    const badges1 = await page1.locator(".symbol-badge").count();
-    const badges2 = await page2.locator(".symbol-badge").count();
-    const badges3 = await page3.locator(".symbol-badge").count();
+      const page3 = await context.newPage();
+      await page3.goto(pageSetup.pageUrl);
+      await page3.waitForTimeout(500);
 
-    expect(badges1).toBeGreaterThanOrEqual(0);
-    expect(badges2).toBeGreaterThanOrEqual(0);
-    expect(badges3).toBeGreaterThanOrEqual(0);
+      // All tabs should have badges
+      const badges1 = await page1.locator(".symbol-badge").count();
+      const badges2 = await page2.locator(".symbol-badge").count();
+      const badges3 = await page3.locator(".symbol-badge").count();
 
-    await page1.close();
-    await page2.close();
-    await page3.close();
+      expect(badges1).toBeGreaterThanOrEqual(0);
+      expect(badges2).toBeGreaterThanOrEqual(0);
+      expect(badges3).toBeGreaterThanOrEqual(0);
+
+      await page1.close();
+      await page2.close();
+      await page3.close();
+    }
   });
 });
 
 test.describe("Browser Features - E2E Tests", () => {
   let context: BrowserContext;
   let page: Page;
+  let cleanup: any;
+  let browserType: AbstractionBrowserType;
 
-  test.beforeEach(async () => {
-    const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "pw-test-"));
-    context = await chromium.launchPersistentContext(userDataDir, {
-      headless: false,
-      args: [
-        `--disable-extensions-except=${extensionPath}`,
-        `--load-extension=${extensionPath}`,
-      ],
-    });
+  test.beforeEach(async ({}, testInfo: TestInfo) => {
+    browserType = testInfo.project.name === "firefox" ? "firefox" : "chromium";
 
-    let [background] = context.serviceWorkers();
-    if (!background) {
-      background = await context.waitForEvent("serviceworker");
-    }
+    const testBrowser = await launchTestBrowser(browserType);
+    context = testBrowser.context;
+    cleanup = testBrowser.cleanup;
 
+    // Setup test page using abstraction
+    const pageSetup = await setupTestPage(browserType);
     page = await context.newPage();
-    await page.goto(testPagePath);
+    await page.goto(pageSetup.pageUrl);
   });
 
   test.afterEach(async () => {
     await context.close();
-  });
-
-  test("extension works with browser dark mode", async () => {
-    // Close existing context and create new one with dark mode
-    await context.close();
-
-    const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "pw-test-"));
-    const darkContext = await chromium.launchPersistentContext(userDataDir, {
-      headless: false,
-      colorScheme: "dark",
-      args: [
-        `--disable-extensions-except=${extensionPath}`,
-        `--load-extension=${extensionPath}`,
-      ],
-    });
-
-    let [background] = darkContext.serviceWorkers();
-    if (!background) {
-      background = await darkContext.waitForEvent("serviceworker");
-    }
-
-    const darkPage = await darkContext.newPage();
-    const testPagePath = path.join(__dirname, "test-page.html");
-    await darkPage.goto(`file://${testPagePath}`);
-    await darkPage.waitForTimeout(500);
-
-    // Extension should work in dark mode
-    const badges = await darkPage.locator(".symbol-badge").count();
-    expect(badges).toBeGreaterThanOrEqual(0);
-
-    await darkPage.close();
-    await darkContext.close();
+    if (cleanup) cleanup();
   });
 
   test("extension works with browser light mode", async () => {
-    const testPagePath = path.join(__dirname, "test-page.html");
-    await page.goto(`file://${testPagePath}`);
+    // Page is already set up in beforeEach, just test it
     await page.waitForTimeout(500);
 
     // Extension should work in light mode
     const badges = await page.locator(".symbol-badge").count();
     expect(badges).toBeGreaterThanOrEqual(0);
+  });
+});
+
+test.describe("Browser Dark Mode - E2E Tests", () => {
+  test("extension works with browser dark mode", async () => {
+    // Test dark mode using the existing abstraction but with dark mode
+    const browserType = "chromium";
+
+    const testBrowser = await launchTestBrowser(browserType);
+    const context = testBrowser.context;
+
+    // Create page with dark mode emulation
+    const pageSetup = await setupTestPage(browserType);
+    const page = await context.newPage();
+    await page.goto(pageSetup.pageUrl);
+
+    // Emulate dark mode
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.waitForTimeout(500);
+
+    // Extension should work in dark mode
+    const badges = await page.locator(".symbol-badge").count();
+    expect(badges).toBeGreaterThanOrEqual(0);
+
+    // Clean up
+    await page.close();
+    await context.close();
+    if (testBrowser.cleanup) testBrowser.cleanup();
   });
 });

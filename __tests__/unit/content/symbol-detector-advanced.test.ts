@@ -261,7 +261,7 @@ describe("SymbolDetector - Advanced Tests", () => {
       // If found, verify it's START
       if (symbolToNodes.has("START")) {
         const startNodes = symbolToNodes.get("START");
-        expect(startNodes!.length).toBeGreaterThan(0);
+        expect(startNodes?.length).toBeGreaterThan(0);
       }
     });
 

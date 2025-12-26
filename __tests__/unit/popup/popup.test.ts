@@ -15,10 +15,12 @@ import {
   getPatternPreview,
 } from "../../../popup/popup-helpers";
 import type { SymbolMarkerConfig } from "../../../types/symbol-config";
-import { setupGlobalMocks } from "../../helpers/chrome-mock";
+import { createMockStorage } from "../../mocks/storage-mock";
+import { StorageService } from "../../../shared/storage-service";
 
-// Setup Chrome API and browser globals
-setupGlobalMocks();
+// Setup mock storage
+const mockStorage = createMockStorage();
+StorageService.setStorageAPI(mockStorage);
 
 describe("Popup Configuration Management", () => {
   beforeEach(() => {

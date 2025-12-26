@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "pre_user_prompt": [
+      {
+        "command": "bash ~/.windsurf/hooks/save_prompt.sh"
+      }
+    ],
+    "post_write_code": [
+      {
+        "command": "bash ~/.windsurf/hooks/stash_and_apply.sh",
+        "show_output": true
+      }
+    ]
+  }
+}
