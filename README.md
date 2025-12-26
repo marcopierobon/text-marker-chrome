@@ -688,6 +688,177 @@ For Chrome Web Store versions (when available):
 
 </details>
 
+<details>
+<summary><strong>How do I build the extension for Chrome vs Firefox?</strong></summary>
+
+The extension supports both Chrome and Firefox with different build processes:
+
+**Chrome/Chromium Build**:
+
+```bash
+# Standard build for Chrome
+npm run build:chrome
+
+# Output: dist/ folder
+# Load: chrome://extensions/ → "Load unpacked" → select dist/
+```
+
+**Firefox Build**:
+
+```bash
+# Firefox-specific build
+npm run build:firefox
+
+# Output: dist-firefox/ folder  
+# Load: about:debugging → "This Firefox" → "Load Temporary Add-on" → select dist-firefox/manifest.firefox.json
+```
+
+**Key Differences**:
+
+- **Manifest**: Chrome uses `manifest.json`, Firefox uses `manifest.firefox.json`
+- **Permissions**: Firefox requires different permission declarations
+- **APIs**: Some Chrome APIs have Firefox equivalents or polyfills
+- **Build Output**: Separate directories to avoid conflicts
+
+**Development Tip**: Use `npm run watch` for Chrome development during active coding.
+
+</details>
+
+<details>
+<summary><strong>How do E2E tests differ between Chrome and Firefox?</strong></summary>
+
+The E2E test suite uses a unified abstraction layer but handles browser differences internally:
+
+**Test Structure**:
+
+```bash
+# Run tests for both browsers
+npm run test:e2e
+
+# Chrome only
+npx playwright test __tests__/e2e/ --project=chromium
+
+# Firefox only  
+npx playwright test __tests__/e2e/ --project=firefox
+```
+
+**Key Differences in Testing**:
+
+**Chrome/Chromium**:
+- Uses native extension loading via `--load-extension`
+- Service worker accessible for direct communication
+- Content script injection happens automatically
+- Storage APIs work natively
+
+**Firefox**:
+- Uses RDP (Remote Debugging Protocol) for extension loading
+- No direct service worker access
+- Content script injected manually with mock storage
+- Requires preference patching for permissions
+
+**Test Implementation**:
+
+The test framework handles these differences automatically:
+
+```typescript
+// Browser-agnostic test code
+const testBrowser = await launchTestBrowser(browserType);
+const page = await context.newPage();
+await setupTestPage(browserType);
+// Tests work identically from here
+```
+
+**Firefox-Specific Setup**:
+- Temporary add-on installation via RDP
+- Host permission pre-granting
+- Mock storage API injection
+- Content script manual loading
+
+**Debugging Firefox Tests**:
+- Check RDP connection logs
+- Verify preference patching
+- Monitor content script injection
+- Validate mock storage setup
+
+**Test Coverage**:
+Both browsers run the same test suite with 42 tests covering:
+- Badge rendering and detection
+- Configuration management
+- URL filtering
+- Extension lifecycle
+- Floating window functionality
+- Dark mode compatibility
+
+</details>
+
+<details>
+<summary><strong>What are the cross-browser compatibility considerations?</strong></summary>
+
+**API Differences**:
+
+**Chrome APIs**:
+- `chrome.storage.sync/` - Native cloud storage
+- `chrome.scripting.executeScript` - Content script injection
+- `chrome.action.onClicked` - Extension icon clicks
+- `chrome.windows.create` - Window management
+
+**Firefox APIs**:
+- `browser.storage.sync/` - WebExtensions storage
+- `browser.tabs.executeScript` - Legacy content script injection
+- `browser.action.onClicked` - Same interface, different implementation
+- `browser.windows.create` - Same interface, different behavior
+
+**Compatibility Layer**:
+
+The extension includes a compatibility layer (`shared/browser-api.ts`) that:
+
+```typescript
+// Unified interface works in both browsers
+import { storage, scripting, runtime } from "./shared/browser-api";
+
+// Automatic detection and polyfilling
+if (typeof chrome !== 'undefined') {
+  // Chrome-specific implementation
+} else if (typeof browser !== 'undefined') {
+  // Firefox-specific implementation  
+}
+```
+
+**Manifest Differences**:
+
+**Chrome** (`manifest.json`):
+```json
+{
+  "manifest_version": 3,
+  "background": { "service_worker": "background.js" },
+  "permissions": ["storage", "scripting", "activeTab"]
+}
+```
+
+**Firefox** (`manifest.firefox.json`):
+```json
+{
+  "manifest_version": 2,
+  "background": { "scripts": ["background.js"] },
+  "permissions": ["storage", "<all_urls>", "activeTab"]
+}
+```
+
+**Testing Strategy**:
+
+- **Unit Tests**: Browser-agnostic, test logic only
+- **Integration Tests**: Use mocked APIs, test component interactions
+- **E2E Tests**: Browser-specific setup, unified test code
+
+**Known Limitations**:
+
+- Firefox doesn't support Manifest V3 yet
+- Some Chrome APIs have no Firefox equivalent
+- Storage quota limits differ between browsers
+- Extension loading mechanisms are fundamentally different
+
+</details>
+
 </details>
 
 ---
