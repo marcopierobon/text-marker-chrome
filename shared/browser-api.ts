@@ -11,8 +11,8 @@
 
 // Detect which browser API is available
 const getBrowserAPI = () =>
-  typeof (globalThis as { browser?: unknown }).browser !== "undefined"
-    ? (globalThis as { browser?: unknown }).browser
+  typeof (globalThis as { browser?: typeof chrome }).browser !== "undefined"
+    ? (globalThis as { browser?: typeof chrome }).browser
     : chrome;
 
 const browserAPI = getBrowserAPI();
@@ -34,9 +34,9 @@ export interface BrowserAPI {
 
 // Create the browser API implementation
 function createBrowserAPI(
-  apiGetter: () => unknown = () => getBrowserAPI(),
+  apiGetter: () => typeof chrome = () => getBrowserAPI() as typeof chrome,
 ): BrowserAPI {
-  const api = apiGetter() as typeof chrome;
+  const api = apiGetter();
   return {
     get storage() {
       return api.storage;

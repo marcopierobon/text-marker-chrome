@@ -1,5 +1,6 @@
 // Popup storage operations using DI-friendly StorageService
 import type { SymbolMarkerConfig } from "../types/symbol-config";
+import type { ChromeMessageResponse } from "../types/chrome-extension";
 import { StorageService } from "../shared/storage-service";
 import { tabs } from "../shared/browser-api";
 
@@ -55,13 +56,13 @@ async function notifyTabsToReload(): Promise<void> {
         console.log(`Sending reload message to tab ${tab.id}: ${tab.url}`);
         tabs
           .sendMessage(tab.id, { action: "reloadConfiguration" })
-          .then((response: unknown) => {
+          .then((response: ChromeMessageResponse) => {
             console.log(`Tab ${tab.id} responded:`, response);
           })
-          .catch((error: unknown) => {
+          .catch((error: Error) => {
             console.log(
               `Tab ${tab.id} error (may not have content script):`,
-              (error as Error).message,
+              error.message,
             );
           });
       }
