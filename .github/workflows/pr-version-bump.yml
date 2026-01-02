@@ -128,16 +128,16 @@ jobs:
         run: |
           echo "🔍 Starting release notes file management..."
           
-          # Get current version from manifest
-          CURRENT_VERSION=$(jq -r '.version' manifest.json)
-          echo "Current version from manifest: $CURRENT_VERSION"
-          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          # Use NEW_VERSION (calculated version) not CURRENT_VERSION
+          NEW_VERSION="${{ steps.version.outputs.version }}"
+          echo "New version for release notes: $NEW_VERSION"
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
           
           # Get release notes from previous step
           REL_NOTES="${{ steps.release-notes.outputs.release_notes }}"
           echo "Release notes extracted: $REL_NOTES"
           
-          RELEASE_NOTES_FILE="release_notes/${CURRENT_VERSION}.md"
+          RELEASE_NOTES_FILE="release_notes/${NEW_VERSION}.md"
           echo "Target release notes file: $RELEASE_NOTES_FILE"
           
           # Check if file exists in master (not in current branch)
@@ -157,7 +157,7 @@ jobs:
           
           # Create or update the release notes file
           {
-            echo "# Release v${CURRENT_VERSION}"
+            echo "# Release v${NEW_VERSION}"
             echo "## 📝 Changes"
             echo "$REL_NOTES"
             echo ""
@@ -236,15 +236,15 @@ jobs:
       - name: Commit updated release notes
         if: steps.release-notes-file.outputs.version_already_bumped == 'true'
         run: |
-          CURRENT_VERSION=$(jq -r '.version' manifest.json)
-          RELEASE_NOTES_FILE="release_notes/${CURRENT_VERSION}.md"
+          NEW_VERSION="${{ steps.release-notes-file.outputs.NEW_VERSION }}"
+          RELEASE_NOTES_FILE="release_notes/${NEW_VERSION}.md"
           
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
           # Add and commit updated release notes
           git add "$RELEASE_NOTES_FILE"
-          git commit -m "docs: update release notes for v${CURRENT_VERSION} with new commits"
+          git commit -m "docs: update release notes for v${NEW_VERSION} with new commits"
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
           
           echo "✅ Updated release notes committed and pushed"
@@ -254,15 +254,15 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const currentVersion = '${{ steps.release-notes-file.outputs.CURRENT_VERSION }}';
+            const newVersion = '${{ steps.release-notes-file.outputs.NEW_VERSION }}';
             const bumpType = '${{ steps.version-type.outputs.type }}';
             
             const message = `## 🔄 Release Notes Updated
             
-            **Current Version**: ${currentVersion}
+            **New Version**: ${newVersion}
             **Bump Type**: ${bumpType}
             
-            The version files already contain version ${currentVersion}, so no version bump was performed.
+            The version files already contain version ${newVersion}, so no version bump was performed.
             However, the release notes have been updated with new commits from this PR.
             
             This happens when:
@@ -270,13 +270,13 @@ jobs:
             - New commits were added after the version bump
             
             The PR is ready for review and merge. Once merged, the master workflow will:
-            - Create a Git tag (v${currentVersion})
+            - Create a Git tag (v${newVersion})
             - Create a GitHub release with the updated release notes
             - Publish to Chrome Web Store
             
             ---
             
-            *Release notes updated because version ${currentVersion} is already applied.*`;
+            *Release notes updated because version ${newVersion} is already applied.*`;
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
