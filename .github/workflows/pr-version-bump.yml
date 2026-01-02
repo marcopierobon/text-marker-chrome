@@ -2,7 +2,7 @@ name: PR Version Bump
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, labeled]
     branches: [main, master]
 
 jobs:
@@ -71,6 +71,48 @@ jobs:
           echo "New version: $NEW_VERSION"
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
+      - name: Extract commits for release notes
+        id: release-notes
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.version }}"
+          echo "Extracting commits for version $NEW_VERSION"
+          
+          # Get all commits that are in PR but not in master
+          COMMITS=$(git log --oneline --no-merges origin/master..HEAD)
+          
+          if [ -z "$COMMITS" ]; then
+            echo "No new commits found"
+            echo "release_notes=No changes in this release" >> $GITHUB_OUTPUT
+          else
+            echo "Found commits:"
+            echo "$COMMITS"
+            
+            # Create release notes directory
+            mkdir -p release_notes
+            
+            # Generate release notes content
+            cat > "release_notes/${NEW_VERSION}.md" << EOF
+            # Release v${NEW_VERSION}
+            
+            ## 📝 Changes
+            
+            $COMMITS
+            
+            ---
+            
+            *This release was automatically generated from PR #${{ github.event.pull_request.number }}*
+            EOF
+            
+            echo "✅ Created release_notes/${NEW_VERSION}.md"
+            
+            # Set output for comment
+            RELEASE_NOTES_CONTENT="## 📝 Changes
+            
+            $(echo "$COMMITS" | sed 's/^/- /')"
+            
+            echo "release_notes=$RELEASE_NOTES_CONTENT" >> $GITHUB_OUTPUT
+          fi
+
       - name: Update version files
         run: |
           NEW_VERSION="${{ steps.version.outputs.version }}"
@@ -100,12 +142,20 @@ jobs:
             exit 1
           fi
           
+          # Add version files and release notes
           git add package.json manifest.json manifest.firefox.json
+          
+          # Add release notes if they exist
+          if [ -d "release_notes" ]; then
+            git add release_notes/
+            echo "📝 Added release notes"
+          fi
+          
           git commit -m "chore: bump version to ${{ steps.version.outputs.version }}"
           
           # Push to the PR branch
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
-          echo "✅ Version bump committed and pushed to PR branch"
+          echo "✅ Version bump and release notes committed and pushed to PR branch"
 
       - name: Comment on PR
         if: success()
@@ -114,17 +164,20 @@ jobs:
           script: |
             const newVersion = '${{ steps.version.outputs.version }}';
             const bumpType = '${{ steps.version-type.outputs.type }}';
+            const releaseNotes = `${{ steps.release-notes.outputs.release_notes }}`;
             
             const message = `## 🔄 Version Bumped
             
             **New Version**: ${newVersion}
             **Bump Type**: ${bumpType}
             
-            Version files have been updated and committed to this PR. This PR is now ready for review and merge.
+            ${releaseNotes}
+            
+            Version files and release notes have been updated and committed to this PR. This PR is now ready for review and merge.
             
             Once merged, the master workflow will automatically:
             - Create a Git tag (v${newVersion})
-            - Create a GitHub release
+            - Create a GitHub release with these release notes
             - Publish to Chrome Web Store
             
             ---
