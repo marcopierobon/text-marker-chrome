@@ -9,8 +9,8 @@ export default defineConfig({
   timeout: 60000, // Increase timeout for Firefox in CI
   reporter: [
     ["html", { open: "never" }],
-    ["line"],           // Show detailed test progress in console
-    ["list"],           // Show test list with status
+    ["line"], // Show detailed test progress in console
+    ["list"], // Show test list with status
   ],
   use: {
     trace: "on-first-retry",
