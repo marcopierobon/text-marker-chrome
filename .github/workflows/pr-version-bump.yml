@@ -152,6 +152,9 @@ jobs:
             UPDATE_FILE=false
           fi
           
+          # Ensure release_notes directory exists
+          mkdir -p release_notes
+          
           # Create or update the release notes file
           {
             echo "# Release v${CURRENT_VERSION}"
