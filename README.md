@@ -397,7 +397,7 @@ We welcome contributions from the community! Here's how you can help improve Tex
 ### 🔄 Complete CI/CD Flow
 
 ```
-Feature Branch → PR with version-bump label → Auto version update → 
+Feature Branch → PR with version-bump label → Auto version update →
 Review & Merge → Master build → Tag creation → Chrome Store publish → Release
 ```
 
@@ -991,11 +991,11 @@ git push origin feature/new-feature
 
 ### 🏷️ Version Labels
 
-| Labels | Version Bump | Example |
-|--------|--------------|---------|
-| `version-bump` | Patch | 1.0.0 → 1.0.1 |
-| `version-bump` + `minor` | Minor | 1.0.0 → 1.1.0 |
-| `version-bump` + `major` | Major | 1.0.0 → 2.0.0 |
+| Labels                   | Version Bump | Example       |
+| ------------------------ | ------------ | ------------- |
+| `version-bump`           | Patch        | 1.0.0 → 1.0.1 |
+| `version-bump` + `minor` | Minor        | 1.0.0 → 1.1.0 |
+| `version-bump` + `major` | Major        | 1.0.0 → 2.0.0 |
 
 ### 📦 What Gets Published
 
