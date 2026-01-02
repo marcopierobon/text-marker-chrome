@@ -92,42 +92,23 @@ jobs:
         id: release-notes
         run: |
           NEW_VERSION="${{ steps.version.outputs.version }}"
-          echo "Extracting commits for version $NEW_VERSION"
+          echo "Calling extract-release-notes script for version $NEW_VERSION"
           
-          # Get all commits that are in PR but not in master
-          COMMITS=$(git log --oneline --no-merges origin/master..HEAD)
+          # Call the shell script to extract commits and generate release notes
+          ./scripts/extract-release-notes.sh "$NEW_VERSION" > release-notes-output.txt 2>&1 || {
+            echo "❌ Script execution failed"
+            cat release-notes-output.txt
+            exit 1
+          }
           
-          if [ -z "$COMMITS" ]; then
-            echo "No new commits found"
-            echo "release_notes=No changes in this release" >> $GITHUB_OUTPUT
+          # Parse the output to extract release notes content
+          if grep -q "release_notes=" release-notes-output.txt; then
+            RELEASE_NOTES=$(grep "release_notes=" release-notes-output.txt | cut -d'=' -f2-)
+            echo "release_notes=$RELEASE_NOTES" >> $GITHUB_OUTPUT
+            echo "✅ Release notes extracted successfully"
           else
-            echo "Found commits:"
-            echo "$COMMITS"
-            
-            # Create release notes directory
-            mkdir -p release_notes
-            
-            # Generate release notes content with proper here-document syntax
-            cat > "release_notes/${NEW_VERSION}.md" << EOF
-            # Release v${NEW_VERSION}
-            
-            ## 📝 Changes
-            
-            $COMMITS
-            
-            ---
-            
-            *This release was automatically generated from PR #${{ github.event.pull_request.number }}*
-            EOF
-            
-            echo "✅ Created release_notes/${NEW_VERSION}.md"
-            
-            # Set output for comment
-            RELEASE_NOTES_CONTENT="## 📝 Changes
-            
-            $(echo "$COMMITS" | sed 's/^/- /')"
-            
-            echo "release_notes=$RELEASE_NOTES_CONTENT" >> $GITHUB_OUTPUT
+            echo "release_notes=No changes in this release" >> $GITHUB_OUTPUT
+            echo "ℹ️ No release notes content found"
           fi
 
       - name: Update version files
