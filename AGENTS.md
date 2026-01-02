@@ -20,4 +20,4 @@ Check the status of the pending buy and sell, and update the initial message in 
 ### Additional requests
 
 Do not create .md files to tell me what you did unless I ask you to.
-Do not mess perform git operations unless I ask you to.
+Do not perform git operations unless I ask you to.
