@@ -4,6 +4,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, labeled]
     branches: [main, master]
+  workflow_dispatch:  # Allow manual triggering for testing
 
 jobs:
   version-bump:
@@ -11,6 +12,19 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'version-bump')
     
     steps:
+      - name: Debug PR information
+        run: |
+          echo "🔍 Debugging PR information..."
+          echo "Event name: ${{ github.event_name }}"
+          echo "PR number: ${{ github.event.pull_request.number }}"
+          echo "PR state: ${{ github.event.pull_request.state }}"
+          echo "Base branch: ${{ github.event.pull_request.base.ref }}"
+          echo "Head branch: ${{ github.event.pull_request.head.ref }}"
+          echo "All labels:"
+          echo "${{ github.event.pull_request.labels.*.name }}" | tr ' ' '\n'
+          echo "Has version-bump label: ${{ contains(github.event.pull_request.labels.*.name, 'version-bump') }}"
+          echo "Has minor label: ${{ contains(github.event.pull_request.labels.*.name, 'minor') }}"
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
