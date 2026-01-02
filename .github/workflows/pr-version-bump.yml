@@ -92,6 +92,7 @@ jobs:
       - name: Check if version already bumped
         id: version-check
         run: |
+          echo "🔍 Starting version check step..."
           NEW_VERSION="${{ steps.version.outputs.version }}"
           echo "Checking if version $NEW_VERSION already applied..."
           
@@ -116,6 +117,8 @@ jobs:
             echo "skip_version_bump=false" >> $GITHUB_OUTPUT
             echo "Version files need to be updated to $NEW_VERSION"
           fi
+          
+          echo "🔍 Version check step completed"
 
       - name: Extract commits for release notes
         id: release-notes
