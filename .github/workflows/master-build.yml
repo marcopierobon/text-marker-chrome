@@ -153,37 +153,6 @@ jobs:
           mv text_marker-*.zip text-marker-firefox-${{ steps.version.outputs.version }}.xpi
           echo "Created text-marker-firefox-${{ steps.version.outputs.version }}.xpi"
 
-      - name: Create release notes
-        id: release-notes
-        run: |
-          cat > release-notes.md << 'EOF'
-          ## 🚀 Release ${{ steps.version.outputs.version }}
-          
-          ### 📊 Metrics
-          - **Test Coverage:** ${{ steps.coverage.outputs.coverage }}%
-          - **Build Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          - **Commit:** ${{ github.sha }}
-          
-          ### 📦 Installation
-          
-          **Chrome:**
-          1. Download `text-marker-chrome-${{ steps.version.outputs.version }}.zip`
-          2. Extract the ZIP file
-          3. Open Chrome and go to `chrome://extensions/`
-          4. Enable "Developer mode"
-          5. Click "Load unpacked" and select the extracted folder
-          
-          **Firefox:**
-          1. Download `text-marker-firefox-${{ steps.version.outputs.version }}.zip` or `text-marker-firefox-${{ steps.version.outputs.version }}.xpi`
-          2. **For ZIP:** Extract and load via `about:debugging#/runtime/this-firefox` → "Load Temporary Add-on"
-          3. **For XPI:** Open Firefox and go to `about:addons` → "Install Add-on From File" → Select the XPI file
-          
-          ### 📝 Changes
-          See commit history for detailed changes.
-          EOF
-          
-          cat release-notes.md
-
       - name: Check if version changed
         id: version-check
         run: |
@@ -200,6 +169,29 @@ jobs:
           else
             echo "version_changed=true" >> $GITHUB_OUTPUT
             echo "✅ Version changed, creating tag"
+          fi
+
+      - name: Generate release notes
+        if: steps.version-check.outputs.version_changed == 'true'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          RELEASE_NOTES_FILE="release_notes/${VERSION}.md"
+          
+          if [ -f "$RELEASE_NOTES_FILE" ]; then
+            echo "📝 Using pre-generated release notes from $RELEASE_NOTES_FILE"
+            cp "$RELEASE_NOTES_FILE" release-notes.md
+          else
+            echo "⚠️ No pre-generated release notes found, creating basic release notes"
+            cat > release-notes.md << EOF
+            # Release v${VERSION}
+            
+            ## 📝 Changes
+            See commit history for detailed changes.
+            
+            ---
+            
+            *Release notes were not automatically generated*
+            EOF
           fi
 
       - name: Create Git tag
