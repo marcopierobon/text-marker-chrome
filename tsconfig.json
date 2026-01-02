@@ -23,7 +23,6 @@
     "resolveJsonModule": true,
     "declaration": true,
     "declarationMap": false,
-    "sourceMap": true,
     "outDir": "./dist",
     "rootDir": "./",
     "types": ["chrome", "node", "jest"],

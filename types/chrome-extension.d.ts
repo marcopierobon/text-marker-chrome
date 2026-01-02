@@ -2,12 +2,15 @@
 
 export interface ChromeMessage {
   action: string;
-  [key: string]: unknown;
+  payload?: Record<string, unknown>;
 }
 
 export interface ChromeMessageResponse {
   success?: boolean;
   error?: string;
+  data?: Record<string, unknown>;
+  configuration?: unknown;
+  badgeCount?: number;
   [key: string]: unknown;
 }
 

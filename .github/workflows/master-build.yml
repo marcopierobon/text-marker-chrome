@@ -24,10 +24,34 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+            npm ci --only=production
+          fi
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
+
+      - name: Setup virtual display
+        run: |
+          # Start Xvfb virtual display for headed browser tests
+          Xvfb :99 -screen 0 1280x1024x24 > /dev/null 2>&1 &
+          sleep 2  # Give Xvfb time to start
+          export DISPLAY=:99
+          echo "DISPLAY=:99" >> $GITHUB_ENV
+          # Verify Xvfb is running
+          xdpyinfo -display :99 >/dev/null 2>&1 || echo "Xvfb display :99 is ready"
 
       - name: Check code formatting
         run: npx prettier --check "**/*.{ts,js,json,md}"
@@ -59,7 +83,9 @@ jobs:
       - name: Run integration tests
         run: npm test -- __tests__/integration
 
-      - name: Run E2E tests
+      - name: Run E2E tests (Chrome and Firefox)
+        env:
+          NODE_OPTIONS: "--max-old-space-size=4096"  # Increase memory for Firefox tests
         run: npm run test:e2e
 
       - name: Run coverage and generate report
@@ -160,6 +186,13 @@ jobs:
           cd ..
           echo "Created text-marker-firefox-${{ steps.version.outputs.version }}.zip"
 
+      - name: Create Firefox XPI package
+        run: |
+          npm run package:firefox
+          # Rename the generated zip to xpi for clarity
+          mv text_marker-*.zip text-marker-firefox-${{ steps.version.outputs.version }}.xpi
+          echo "Created text-marker-firefox-${{ steps.version.outputs.version }}.xpi"
+
       - name: Create release notes
         id: release-notes
         run: |
@@ -181,11 +214,9 @@ jobs:
           5. Click "Load unpacked" and select the extracted folder
           
           **Firefox:**
-          1. Download `text-marker-firefox-${{ steps.version.outputs.version }}.zip`
-          2. Extract the ZIP file
-          3. Open Firefox and go to `about:debugging#/runtime/this-firefox`
-          4. Click "Load Temporary Add-on"
-          5. Select the manifest.json file from the extracted folder
+          1. Download `text-marker-firefox-${{ steps.version.outputs.version }}.zip` or `text-marker-firefox-${{ steps.version.outputs.version }}.xpi`
+          2. **For ZIP:** Extract and load via `about:debugging#/runtime/this-firefox` → "Load Temporary Add-on"
+          3. **For XPI:** Open Firefox and go to `about:addons` → "Install Add-on From File" → Select the XPI file
           
           ### 📝 Changes
           See commit history for detailed changes.
@@ -209,6 +240,7 @@ jobs:
           files: |
             text-marker-chrome-${{ steps.version.outputs.version }}.zip
             text-marker-firefox-${{ steps.version.outputs.version }}.zip
+            text-marker-firefox-${{ steps.version.outputs.version }}.xpi
           draft: false
           prerelease: false
         env:

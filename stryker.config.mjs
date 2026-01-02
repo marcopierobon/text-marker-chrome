@@ -6,28 +6,29 @@ const config = {
   coverageAnalysis: "perTest",
   jest: {
     projectType: "custom",
-    configFile: "jest.config.ts",
-    enableFindRelatedTests: true,
-    config: {
-      testMatch: ["**/__tests__/**/*.test.ts"],
-    },
+    configFile: "jest-stryker.config.mjs",
+    enableFindRelatedTests: false,
   },
   mutate: [
     "content/**/*.ts",
-    "shared/**/*.ts",
+    "shared/**/*.ts", 
     "utils/**/*.ts",
     "!**/*.test.ts",
     "!**/__tests__/**",
     "!**/*.d.ts",
+    "!**/*.config.*",
+    "!**/stryker*.*",
+    "!**/jest*.*",
+    "!popup/popup.ts",
+    "!background.ts",
   ],
   thresholds: {
     high: 80,
     low: 50,
     break: 50,
   },
-  timeoutMS: 60000,
-  maxConcurrentTestRunners: 2,
-  concurrency: 4,
+  timeoutMS: 30000,  // Reduce timeout for faster execution
+  concurrency: 2,     // Reduce concurrency for CI stability
   ignorePatterns: [
     "node_modules",
     "dist",

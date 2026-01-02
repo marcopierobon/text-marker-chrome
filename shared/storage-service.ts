@@ -56,7 +56,7 @@ export class StorageService {
    * @param key - The key to load
    * @returns The stored data or null if not found
    */
-  static async load<T = unknown>(key: string): Promise<T | null> {
+  static async load<T = SymbolMarkerConfig>(key: string): Promise<T | null> {
     try {
       // Try sync storage first
       let result: ChromeStorageResult = await this.storage.sync.get([key]);
@@ -87,7 +87,10 @@ export class StorageService {
    * @param data - The data to save
    * @returns Success status
    */
-  static async save(key: string, data: unknown): Promise<boolean> {
+  static async save<T = SymbolMarkerConfig>(
+    key: string,
+    data: T,
+  ): Promise<boolean> {
     try {
       const storageData: StorageData = { [key]: data };
       const dataSize = JSON.stringify(storageData).length;

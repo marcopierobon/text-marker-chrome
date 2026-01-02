@@ -709,7 +709,7 @@ npm run build:chrome
 # Firefox-specific build
 npm run build:firefox
 
-# Output: dist-firefox/ folder  
+# Output: dist-firefox/ folder
 # Load: about:debugging → "This Firefox" → "Load Temporary Add-on" → select dist-firefox/manifest.firefox.json
 ```
 
@@ -738,19 +738,21 @@ npm run test:e2e
 # Chrome only
 npx playwright test __tests__/e2e/ --project=chromium
 
-# Firefox only  
+# Firefox only
 npx playwright test __tests__/e2e/ --project=firefox
 ```
 
 **Key Differences in Testing**:
 
 **Chrome/Chromium**:
+
 - Uses native extension loading via `--load-extension`
 - Service worker accessible for direct communication
 - Content script injection happens automatically
 - Storage APIs work natively
 
 **Firefox**:
+
 - Uses RDP (Remote Debugging Protocol) for extension loading
 - No direct service worker access
 - Content script injected manually with mock storage
@@ -769,12 +771,14 @@ await setupTestPage(browserType);
 ```
 
 **Firefox-Specific Setup**:
+
 - Temporary add-on installation via RDP
 - Host permission pre-granting
 - Mock storage API injection
 - Content script manual loading
 
 **Debugging Firefox Tests**:
+
 - Check RDP connection logs
 - Verify preference patching
 - Monitor content script injection
@@ -782,6 +786,7 @@ await setupTestPage(browserType);
 
 **Test Coverage**:
 Both browsers run the same test suite with 42 tests covering:
+
 - Badge rendering and detection
 - Configuration management
 - URL filtering
@@ -797,12 +802,14 @@ Both browsers run the same test suite with 42 tests covering:
 **API Differences**:
 
 **Chrome APIs**:
+
 - `chrome.storage.sync/` - Native cloud storage
 - `chrome.scripting.executeScript` - Content script injection
 - `chrome.action.onClicked` - Extension icon clicks
 - `chrome.windows.create` - Window management
 
 **Firefox APIs**:
+
 - `browser.storage.sync/` - WebExtensions storage
 - `browser.tabs.executeScript` - Legacy content script injection
 - `browser.action.onClicked` - Same interface, different implementation
@@ -817,16 +824,17 @@ The extension includes a compatibility layer (`shared/browser-api.ts`) that:
 import { storage, scripting, runtime } from "./shared/browser-api";
 
 // Automatic detection and polyfilling
-if (typeof chrome !== 'undefined') {
+if (typeof chrome !== "undefined") {
   // Chrome-specific implementation
-} else if (typeof browser !== 'undefined') {
-  // Firefox-specific implementation  
+} else if (typeof browser !== "undefined") {
+  // Firefox-specific implementation
 }
 ```
 
 **Manifest Differences**:
 
 **Chrome** (`manifest.json`):
+
 ```json
 {
   "manifest_version": 3,
@@ -836,6 +844,7 @@ if (typeof chrome !== 'undefined') {
 ```
 
 **Firefox** (`manifest.firefox.json`):
+
 ```json
 {
   "manifest_version": 2,

@@ -23,6 +23,7 @@
     "test:e2e:firefox": "playwright test --project=firefox",
     "test:e2e:headed": "playwright test --headed",
     "firefox:run": "npm run build:firefox && web-ext run --source-dir=dist-firefox",
+    "package:firefox": "npm run build:firefox && npx web-ext build --source-dir=dist-firefox --artifacts-dir=.",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:failed": "playwright test --last-failed",
@@ -38,13 +39,21 @@
   "devDependencies": {
     "@playwright/test": "^1.57.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-typescript": "^12.3.0",
     "@stryker-mutator/core": "^9.4.0",
     "@stryker-mutator/jest-runner": "^9.4.0",
+    "@types/chrome": "^0.1.32",
     "@types/jest": "^30.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.51.0",
+    "@typescript-eslint/parser": "^8.51.0",
+    "eslint": "^9.39.2",
     "jest": "^30.2.0",
     "jest-environment-jsdom": "^30.2.0",
     "jsdom": "^27.3.0",
     "playwright": "^1.57.0",
-    "rollup": "^4.54.0"
+    "prettier": "^3.7.4",
+    "rollup": "^4.54.0",
+    "rollup-plugin-copy": "^3.5.0",
+    "ts-jest": "^29.4.6"
   }
 }

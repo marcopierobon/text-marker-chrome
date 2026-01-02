@@ -5,23 +5,35 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 1,
-  timeout: 5000,
-  reporter: [["html", { open: "never" }]],
+  workers: process.env.CI ? 1 : 2, // Keep 1 worker in CI for stability
+  timeout: 60000, // Increase timeout for Firefox in CI
+  reporter: [
+    ["html", { open: "never" }],
+    ["line"], // Show detailed test progress in console
+    ["list"], // Show test list with status
+  ],
   use: {
     trace: "on-first-retry",
-    actionTimeout: 5000,
-    navigationTimeout: 5000,
+    actionTimeout: 10000, // Increase action timeout
+    navigationTimeout: 15000, // Increase navigation timeout
     headless: true,
   },
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        actionTimeout: 10000, // 10s for Chrome actions
+        navigationTimeout: 15000, // 15s for Chrome navigation
+      },
     },
     {
       name: "firefox",
-      use: { ...devices["Desktop Firefox"] },
+      use: {
+        ...devices["Desktop Firefox"],
+        actionTimeout: 20000, // 20s for Firefox actions (longer for CI)
+        navigationTimeout: 30000, // 30s for Firefox navigation
+      },
     },
   ],
 });
