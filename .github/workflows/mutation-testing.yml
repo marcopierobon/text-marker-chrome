@@ -51,6 +51,7 @@ jobs:
       - name: Run mutation tests
         id: mutation
         continue-on-error: true
+        timeout-minutes: 30  # Add timeout to prevent hanging
         run: |
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             echo "🧬 Running differential mutation testing on PR changes..."
@@ -71,18 +72,50 @@ jobs:
               echo "Source files to mutate:"
               echo "$SOURCE_FILES"
               
-              # Run incremental mutation testing only on source files
-              npm run test:mutation:incremental -- --reporters=json > mutation-report.json || true
+              # Run incremental mutation testing only on source files with timeout
+              echo "🧬 Starting incremental mutation testing (timeout: 25 minutes)..."
+              timeout 25m npm run test:mutation:incremental -- --reporters=json --logLevel=info > mutation-report.json 2>&1 || {
+                echo "⚠️ Mutation testing timed out or failed, checking partial results..."
+                if [ -f mutation-report.json ]; then
+                  echo "Found partial results"
+                else
+                  echo '{"mutationScore": 0}' > mutation-report.json
+                fi
+              }
+              
               MUTATION_SCORE=$(jq -r '.mutationScore' mutation-report.json 2>/dev/null || echo "0")
               echo "PR Mutation Score (incremental): $MUTATION_SCORE%"
+              
+              # Show some debug info
+              echo "📊 Mutation testing summary:"
+              if [ -f .stryker-tmp/mutation-report.json ]; then
+                echo "Total mutants: $(jq -r '.totalMutants' .stryker-tmp/mutation-report.json 2>/dev/null || echo "unknown")"
+                echo "Killed mutants: $(jq -r '.killedMutants' .stryker-tmp/mutation-report.json 2>/dev/null || echo "unknown")"
+              fi
             fi
           else
             echo "🧬 Running full mutation testing on master..."
             
-            # Run full mutation testing on master
-            npm run test:mutation -- --reporters=json > mutation-report.json || true
+            # Run full mutation testing on master with timeout
+            echo "🧬 Starting full mutation testing (timeout: 28 minutes)..."
+            timeout 28m npm run test:mutation -- --reporters=json --logLevel=info > mutation-report.json 2>&1 || {
+              echo "⚠️ Full mutation testing timed out or failed, checking partial results..."
+              if [ -f mutation-report.json ]; then
+                echo "Found partial results"
+              else
+                echo '{"mutationScore": 0}' > mutation-report.json
+              fi
+            }
+            
             MUTATION_SCORE=$(jq -r '.mutationScore' mutation-report.json 2>/dev/null || echo "0")
             echo "Master Mutation Score (full): $MUTATION_SCORE%"
+            
+            # Show some debug info
+            echo "📊 Mutation testing summary:"
+            if [ -f .stryker-tmp/mutation-report.json ]; then
+              echo "Total mutants: $(jq -r '.totalMutants' .stryker-tmp/mutation-report.json 2>/dev/null || echo "unknown")"
+              echo "Killed mutants: $(jq -r '.killedMutants' .stryker-tmp/mutation-report.json 2>/dev/null || echo "unknown")"
+            fi
           fi
           
           echo "mutation_score=$MUTATION_SCORE" >> $GITHUB_OUTPUT
