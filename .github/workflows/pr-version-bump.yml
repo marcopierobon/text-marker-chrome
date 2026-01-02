@@ -30,6 +30,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0  # Get full history for proper version comparison
+          fetch-tags: true  # Fetch all tags
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
