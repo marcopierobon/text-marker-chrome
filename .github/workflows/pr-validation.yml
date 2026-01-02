@@ -45,6 +45,13 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
+      - name: Verify Playwright cache directory
+        run: |
+          echo "Cache directory contents:"
+          ls -la ~/.cache/ms-playwright/ || echo "Cache directory not found"
+          echo "Home directory:"
+          ls -la ~/.cache/ || echo "No cache directory"
+
       - name: Setup virtual display
         run: |
           # Start Xvfb virtual display for headed browser tests

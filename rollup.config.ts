@@ -20,13 +20,14 @@ export default defineConfig([
     output: {
       file: `${outputDir}/background.js`,
       format: "iife",
+      name: "backgroundScript",
       sourcemap: true,
     },
     plugins: [
       resolve({ extensions: [".ts", ".js"] }),
       typescript({
         tsconfig: "./tsconfig.json",
-        sourceMap: true,
+        sourceMap: true, // Fix: use sourceMap not sourcemap
         declaration: false,
         compilerOptions: {
           outDir: outputDir,
@@ -40,13 +41,14 @@ export default defineConfig([
     output: {
       file: `${outputDir}/content/content.js`,
       format: "iife",
+      name: "contentScript", // Fix IIFE bundle name warning
       sourcemap: true,
     },
     plugins: [
       resolve({ extensions: [".ts", ".js"] }),
       typescript({
         tsconfig: "./tsconfig.json",
-        sourceMap: true,
+        sourceMap: true, // Fix: use sourceMap not sourcemap
         declaration: false,
         compilerOptions: {
           outDir: `${outputDir}/content`,
@@ -60,13 +62,14 @@ export default defineConfig([
     output: {
       file: `${outputDir}/popup/popup.js`,
       format: "iife",
+      name: "popupScript", // Fix IIFE bundle name warning
       sourcemap: true,
     },
     plugins: [
       resolve({ extensions: [".ts", ".js"] }),
       typescript({
         tsconfig: "./tsconfig.json",
-        sourceMap: true,
+        sourceMap: true, // Fix: use sourceMap not sourcemap
         declaration: false,
         compilerOptions: {
           outDir: `${outputDir}/popup`,
