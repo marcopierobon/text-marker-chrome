@@ -87,6 +87,7 @@ jobs:
         run: npm run build
 
       - name: Run unit tests
+        id: run-unit-tests
         run: npm test -- __tests__/unit
 
       - name: Run integration tests
@@ -98,10 +99,12 @@ jobs:
         run: npm run test:e2e
 
       - name: Run coverage and generate report
+        if: success() && (steps.run-unit-tests.outcome == 'success')
         run: npm run test:coverage -- --coverage --coverageReporters=json-summary
 
       - name: Get PR coverage
         id: pr-coverage
+        if: success() && steps.run-unit-tests.outcome == 'success'
         run: |
           COVERAGE=$(jq -r '.total.lines.pct' coverage/coverage-summary.json)
           echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
@@ -148,7 +151,7 @@ jobs:
 
       - name: Comment PR with coverage
         uses: actions/github-script@v7
-        if: always()
+        if: success() && steps.run-unit-tests.outcome == 'success' && steps.pr-coverage.outcome == 'success'
         with:
           script: |
             const prCoverage = '${{ steps.pr-coverage.outputs.coverage }}';
@@ -171,8 +174,23 @@ jobs:
               body: message
             });
 
+      - name: Comment PR when tests failed
+        uses: actions/github-script@v7
+        if: failure() && steps.run-unit-tests.outcome == 'failure'
+        with:
+          script: |
+            const message = `## 🚨 Test Results\n\n❌ **Unit tests failed** - No coverage report generated\n\nPlease check the workflow logs for details and fix the failing tests before requesting a review.`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
+
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
+        if: success() && steps.run-unit-tests.outcome == 'success' && steps.pr-coverage.outcome == 'success'
         with:
           name: pr-coverage-report
           path: coverage/

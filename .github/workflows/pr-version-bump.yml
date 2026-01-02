@@ -1,0 +1,162 @@
+name: PR Version Bump
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, master]
+
+jobs:
+  version-bump:
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'version-bump')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0  # Get full history for proper version comparison
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Determine version bump type
+        id: version-type
+        run: |
+          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'major') }}" == "true" ]]; then
+            echo "type=major" >> $GITHUB_OUTPUT
+          elif [[ "${{ contains(github.event.pull_request.labels.*.name, 'minor') }}" == "true" ]]; then
+            echo "type=minor" >> $GITHUB_OUTPUT
+          else
+            echo "type=patch" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Calculate new version
+        id: version
+        run: |
+          CURRENT_VERSION=$(jq -r '.version' package.json)
+          echo "Current version: $CURRENT_VERSION"
+          
+          TYPE="${{ steps.version-type.outputs.type }}"
+          echo "Bump type: $TYPE"
+          
+          # Parse current version
+          IFS='.' read -r -a VERSION_PARTS <<< "$CURRENT_VERSION"
+          MAJOR=${VERSION_PARTS[0]}
+          MINOR=${VERSION_PARTS[1]}
+          PATCH=${VERSION_PARTS[2]}
+          
+          case $TYPE in
+            "major")
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            "minor")
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            "patch")
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+          
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          echo "New version: $NEW_VERSION"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update version files
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.version }}"
+          
+          # Update package.json
+          jq --arg version "$NEW_VERSION" '.version = $version' package.json > package.tmp && mv package.tmp package.json
+          
+          # Update Chrome manifest
+          jq --arg version "$NEW_VERSION" '.version = $version' manifest.json > manifest.tmp && mv manifest.tmp manifest.json
+          
+          # Update Firefox manifest
+          jq --arg version "$NEW_VERSION" '.version = $version' manifest.firefox.json > manifest.firefox.tmp && mv manifest.firefox.tmp manifest.firefox.json
+          
+          echo "✅ Updated all version files to $NEW_VERSION"
+
+      - name: Run tests
+        run: npm test
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Check if there are changes to commit
+          if git diff --quiet package.json manifest.json manifest.firefox.json; then
+            echo "❌ No version changes detected"
+            exit 1
+          fi
+          
+          git add package.json manifest.json manifest.firefox.json
+          git commit -m "chore: bump version to ${{ steps.version.outputs.version }}"
+          
+          # Push to the PR branch
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          echo "✅ Version bump committed and pushed to PR branch"
+
+      - name: Comment on PR
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const newVersion = '${{ steps.version.outputs.version }}';
+            const bumpType = '${{ steps.version-type.outputs.type }}';
+            
+            const message = `## 🔄 Version Bumped
+            
+            **New Version**: ${newVersion}
+            **Bump Type**: ${bumpType}
+            
+            Version files have been updated and committed to this PR. This PR is now ready for review and merge.
+            
+            Once merged, the master workflow will automatically:
+            - Create a Git tag (v${newVersion})
+            - Create a GitHub release
+            - Publish to Chrome Web Store
+            
+            ---
+            
+            *This version bump was triggered by the \`version-bump\` label.*`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
+
+      - name: Comment on PR when commit fails
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const message = `## ❌ Version Bump Failed
+            
+            The version bump process failed. Please check the workflow logs for details.
+            
+            Possible issues:
+            - No version changes detected
+            - Git push permissions
+            - Test failures
+            
+            Please fix the issues and re-add the \`version-bump\` label to retry.`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });

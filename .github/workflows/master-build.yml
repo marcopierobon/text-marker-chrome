@@ -118,53 +118,13 @@ jobs:
           path: master-coverage-summary.json
           retention-days: 90
 
-      - name: Determine version bump
+      - name: Get current version
         id: version
         run: |
-          # Get current version from package.json
+          # Use the version from package.json (already updated by PR process)
           CURRENT_VERSION=$(jq -r '.version' package.json)
           echo "Current version: $CURRENT_VERSION"
-          
-          # Get latest tag
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          echo "Latest tag: $LATEST_TAG"
-          
-          # Remove 'v' prefix if present
-          LATEST_VERSION=${LATEST_TAG#v}
-          
-          # Split version into parts
-          IFS='.' read -r -a VERSION_PARTS <<< "$LATEST_VERSION"
-          MAJOR=${VERSION_PARTS[0]:-1}
-          MINOR=${VERSION_PARTS[1]:-0}
-          PATCH=${VERSION_PARTS[2]:-0}
-          
-          # Increment patch version
-          PATCH=$((PATCH + 1))
-          
-          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
-          echo "New version: $NEW_VERSION"
-          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-
-      - name: Update package.json version
-        run: |
-          NEW_VERSION=${{ steps.version.outputs.version }}
-          jq --arg version "$NEW_VERSION" '.version = $version' package.json > package.json.tmp
-          mv package.json.tmp package.json
-          echo "Updated package.json to version $NEW_VERSION"
-
-      - name: Update manifest.json version
-        run: |
-          NEW_VERSION=${{ steps.version.outputs.version }}
-          jq --arg version "$NEW_VERSION" '.version = $version' manifest.json > manifest.json.tmp
-          mv manifest.json.tmp manifest.json
-          echo "Updated manifest.json to version $NEW_VERSION"
-
-      - name: Update manifest.firefox.json version
-        run: |
-          NEW_VERSION=${{ steps.version.outputs.version }}
-          jq --arg version "$NEW_VERSION" '.version = $version' manifest.firefox.json > manifest.firefox.json.tmp
-          mv manifest.firefox.json.tmp manifest.firefox.json
-          echo "Updated manifest.firefox.json to version $NEW_VERSION"
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
 
       - name: Build Chrome extension
         run: npm run build:chrome
@@ -224,14 +184,35 @@ jobs:
           
           cat release-notes.md
 
+      - name: Check if version changed
+        id: version-check
+        run: |
+          CURRENT_VERSION="${{ steps.version.outputs.version }}"
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          LATEST_VERSION=${LATEST_TAG#v}
+          
+          echo "Current version: $CURRENT_VERSION"
+          echo "Latest tag version: $LATEST_VERSION"
+          
+          if [[ "$CURRENT_VERSION" == "$LATEST_VERSION" ]]; then
+            echo "version_changed=false" >> $GITHUB_OUTPUT
+            echo "❌ Version unchanged, skipping tag creation"
+          else
+            echo "version_changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Version changed, creating tag"
+          fi
+
       - name: Create Git tag
+        if: steps.version-check.outputs.version_changed == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag -a "v${{ steps.version.outputs.version }}" -m "Release v${{ steps.version.outputs.version }}"
           git push origin "v${{ steps.version.outputs.version }}"
+          echo "🏷️ Created tag v${{ steps.version.outputs.version }}"
 
       - name: Create GitHub Release
+        if: steps.version-check.outputs.version_changed == 'true'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.version.outputs.version }}
@@ -246,6 +227,33 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Publish to Chrome Web Store
+        if: steps.version-check.outputs.version_changed == 'true'
+        continue-on-error: true  # Don't fail the workflow if publishing fails
+        run: |
+          echo "🔍 Debugging Chrome Web Store API access..."
+          echo "Extension ID: ${{ secrets.CHROME_STORE_EXTENSION_ID }}"
+          echo "Client ID: ${{ secrets.CHROME_STORE_CLIENT_ID }}"
+          
+          # Test API access first
+          echo "🧪 Testing API access..."
+          curl -s -H "Authorization: Bearer $(curl -s -d "client_id=${{ secrets.CHROME_STORE_CLIENT_ID }}&client_secret=${{ secrets.CHROME_STORE_CLIENT_SECRET }}&refresh_token=${{ secrets.CHROME_STORE_REFRESH_TOKEN }}&grant_type=refresh_token" https://oauth2.googleapis.com/token | jq -r '.access_token')" "https://www.googleapis.com/chromewebstore/v1.1/items/${{ secrets.CHROME_STORE_EXTENSION_ID }}" || echo "❌ API test failed"
+          
+          # Try publishing with detailed error handling
+          echo "📤 Attempting to publish..."
+          npx chrome-webstore-upload-cli@latest upload \
+            --source text-marker-chrome-${{ steps.version.outputs.version }}.zip \
+            --extension-id ${{ secrets.CHROME_STORE_EXTENSION_ID }} \
+            --client-id ${{ secrets.CHROME_STORE_CLIENT_ID }} \
+            --client-secret ${{ secrets.CHROME_STORE_CLIENT_SECRET }} \
+            --refresh-token ${{ secrets.CHROME_STORE_REFRESH_TOKEN }} \
+            --publish || echo "❌ Publishing failed - see logs above"
+          
+          echo "📋 If publishing failed, check:"
+          echo "1. Chrome Web Store API is enabled in Google Cloud Console"
+          echo "2. Extension is published (not just testing)"
+          echo "3. Google developer verification is complete"
+
       - name: Upload Chrome dist folder as artifact
         uses: actions/upload-artifact@v4
         with:
@@ -259,11 +267,3 @@ jobs:
           name: firefox-dist-v${{ steps.version.outputs.version }}
           path: dist/firefox/
           retention-days: 90
-
-      - name: Commit version updates
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package.json manifest.json manifest.firefox.json
-          git commit -m "chore: bump version to ${{ steps.version.outputs.version }} [skip ci]" || echo "No changes to commit"
-          git push origin master || echo "No changes to push"
