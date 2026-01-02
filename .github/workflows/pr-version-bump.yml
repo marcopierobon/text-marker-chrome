@@ -89,46 +89,6 @@ jobs:
           echo "New version: $NEW_VERSION"
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Check if version already bumped
-        id: version-check
-        run: |
-          echo "🔍 Starting version check step..."
-          NEW_VERSION="${{ steps.version.outputs.version }}"
-          echo "Checking if version $NEW_VERSION already applied..."
-          
-          # First check if release notes file already exists (indicates version was already bumped)
-          RELEASE_NOTES_FILE="release_notes/${NEW_VERSION}.md"
-          if [ -f "$RELEASE_NOTES_FILE" ]; then
-            echo "📝 Found existing release notes file: $RELEASE_NOTES_FILE"
-            echo "✅ Version $NEW_VERSION already applied, skipping bump"
-            echo "skip_version_bump=true" >> $GITHUB_OUTPUT
-            echo "Version bump skipped because release notes file already exists"
-          else
-            # Read current versions from files
-            PACKAGE_VERSION=$(jq -r '.version' package.json 2>/dev/null || echo "null")
-            MANIFEST_VERSION=$(jq -r '.version' manifest.json 2>/dev/null || echo "null")
-            FIREFOX_VERSION=$(jq -r '.version' manifest.firefox.json 2>/dev/null || echo "null")
-            
-            echo "Current versions:"
-            echo "  package.json: $PACKAGE_VERSION"
-            echo "  manifest.json: $MANIFEST_VERSION"
-            echo "  manifest.firefox.json: $FIREFOX_VERSION"
-            echo "  Target version: $NEW_VERSION"
-            
-            # Check if all version files already contain the target version
-            if [ "$PACKAGE_VERSION" = "$NEW_VERSION" ] && [ "$MANIFEST_VERSION" = "$NEW_VERSION" ] && [ "$FIREFOX_VERSION" = "$NEW_VERSION" ]; then
-              echo "✅ Version $NEW_VERSION already applied, skipping bump"
-              echo "skip_version_bump=true" >> $GITHUB_OUTPUT
-              echo "All version files already contain target version"
-            else
-              echo "🔄 Version bump needed"
-              echo "skip_version_bump=false" >> $GITHUB_OUTPUT
-              echo "Version files need to be updated to $NEW_VERSION"
-            fi
-          fi
-          
-          echo "🔍 Version check step completed"
-
       - name: Extract commits for release notes
         id: release-notes
         run: |
@@ -152,58 +112,65 @@ jobs:
             echo "ℹ️ No release notes content found"
           fi
 
-      - name: Update existing release notes if version already bumped
-        if: steps.version-check.outputs.skip_version_bump == 'true'
+      - name: Update or create release notes file
+        id: release-notes-file
         run: |
-          NEW_VERSION="${{ steps.version.outputs.version }}"
-          RELEASE_NOTES_FILE="release_notes/${NEW_VERSION}.md"
+          echo "🔍 Starting release notes file management..."
           
-          echo "📝 Updating existing release notes file: $RELEASE_NOTES_FILE"
+          # Get current version from manifest
+          CURRENT_VERSION=$(jq -r '.version' manifest.json)
+          echo "Current version from manifest: $CURRENT_VERSION"
           
-          # Call the shell script to get updated release notes
-          ./scripts/extract-release-notes.sh "$NEW_VERSION" > updated-release-notes.txt 2>&1 || {
-            echo "❌ Script execution failed"
-            cat updated-release-notes.txt
-            exit 1
-          }
+          # Get release notes from previous step
+          REL_NOTES="${{ steps.release-notes.outputs.release_notes }}"
+          echo "Release notes extracted: $REL_NOTES"
           
-          # Update the existing release notes file with new commits
-          if [ -f "$RELEASE_NOTES_FILE" ]; then
-            # Extract the new release notes content
-            if grep -q "release_notes=" updated-release-notes.txt; then
-              NEW_RELEASE_NOTES=$(grep "release_notes=" updated-release-notes.txt | cut -d'=' -f2-)
-              
-              # Create updated release notes content
-              {
-                echo "# Release v${NEW_VERSION}"
-                echo "## 📝 Changes"
-                echo "$NEW_RELEASE_NOTES"
-                echo ""
-                echo "---"
-                echo "*This release was automatically generated from PR #${{ github.event.pull_request.number }}*"
-                echo "*Release notes updated with new commits*"
-              } > "$RELEASE_NOTES_FILE"
-              
-              echo "✅ Updated existing release notes with new commits"
-              
-              # Commit the updated release notes
-              git config user.name "github-actions[bot]"
-              git config user.email "github-actions[bot]@users.noreply.github.com"
-              
-              git add "$RELEASE_NOTES_FILE"
-              git commit -m "docs: update release notes for v${NEW_VERSION} with new commits"
-              git push origin HEAD:${{ github.event.pull_request.head.ref }}
-              
-              echo "✅ Updated release notes committed and pushed"
-            else
-              echo "ℹ️ No new release notes content to update"
-            fi
+          RELEASE_NOTES_FILE="release_notes/${CURRENT_VERSION}.md"
+          echo "Target release notes file: $RELEASE_NOTES_FILE"
+          
+          # Check if file exists in master (not in current branch)
+          if git diff --name-only origin/master -- | grep -q "^${RELEASE_NOTES_FILE}$"; then
+            echo "📝 File $RELEASE_NOTES_FILE was added in this branch - updating content"
+            UPDATE_FILE=true
+          elif [ -f "$RELEASE_NOTES_FILE" ]; then
+            echo "📝 File $RELEASE_NOTES_FILE exists in master - updating content"
+            UPDATE_FILE=true
           else
-            echo "⚠️ Release notes file not found: $RELEASE_NOTES_FILE"
+            echo "📝 File $RELEASE_NOTES_FILE does not exist - creating new file"
+            UPDATE_FILE=false
           fi
+          
+          # Create or update the release notes file
+          {
+            echo "# Release v${CURRENT_VERSION}"
+            echo "## 📝 Changes"
+            echo "$REL_NOTES"
+            echo ""
+            echo "---"
+            echo "*This release was automatically generated from PR #${{ github.event.pull_request.number }}*"
+            if [ "$UPDATE_FILE" = "true" ]; then
+              echo "*Release notes updated with new commits*"
+            fi
+          } > "$RELEASE_NOTES_FILE"
+          
+          echo "✅ Release notes file $RELEASE_NOTES_FILE created/updated"
+          
+          # Check if this version was already bumped (file exists in master)
+          if git diff --name-only origin/master -- | grep -q "^${RELEASE_NOTES_FILE}$"; then
+            echo "📝 Release notes file was added in this PR branch"
+            echo "version_already_bumped=false" >> $GITHUB_OUTPUT
+          elif git show origin/master:"$RELEASE_NOTES_FILE" >/dev/null 2>&1; then
+            echo "📝 Release notes file exists in master - version already bumped"
+            echo "version_already_bumped=true" >> $GITHUB_OUTPUT
+          else
+            echo "📝 Release notes file does not exist in master - new version"
+            echo "version_already_bumped=false" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "🔍 Release notes file management completed"
 
       - name: Update version files
-        if: steps.version-check.outputs.skip_version_bump != 'true'
+        if: steps.release-notes-file.outputs.version_already_bumped != 'true'
         run: |
           NEW_VERSION="${{ steps.version.outputs.version }}"
           
@@ -219,12 +186,14 @@ jobs:
           echo "✅ Updated all version files to $NEW_VERSION"
 
       - name: Run tests
-        if: steps.version-check.outputs.skip_version_bump != 'true'
+        if: steps.release-notes-file.outputs.version_already_bumped != 'true'
         run: npm test
 
-      - name: Commit version bump
-        if: steps.version-check.outputs.skip_version_bump != 'true'
+      - name: Commit version bump and release notes
+        if: steps.release-notes-file.outputs.version_already_bumped != 'true'
         run: |
+          NEW_VERSION="${{ steps.version.outputs.version }}"
+          
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
@@ -243,39 +212,56 @@ jobs:
             echo "📝 Added release notes"
           fi
           
-          git commit -m "chore: bump version to ${{ steps.version.outputs.version }}"
+          git commit -m "chore: bump version to $NEW_VERSION"
           
           # Push to the PR branch
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
           echo "✅ Version bump and release notes committed and pushed to PR branch"
 
-      - name: Comment on PR when version bump skipped
-        if: steps.version-check.outputs.skip_version_bump == 'true'
+      - name: Commit updated release notes
+        if: steps.release-notes-file.outputs.version_already_bumped == 'true'
+        run: |
+          CURRENT_VERSION=$(jq -r '.version' manifest.json)
+          RELEASE_NOTES_FILE="release_notes/${CURRENT_VERSION}.md"
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Add and commit updated release notes
+          git add "$RELEASE_NOTES_FILE"
+          git commit -m "docs: update release notes for v${CURRENT_VERSION} with new commits"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          
+          echo "✅ Updated release notes committed and pushed"
+
+      - name: Comment on PR when version already bumped
+        if: steps.release-notes-file.outputs.version_already_bumped == 'true'
         uses: actions/github-script@v7
         with:
           script: |
-            const newVersion = '${{ steps.version.outputs.version }}';
+            const currentVersion = '${{ steps.release-notes-file.outputs.CURRENT_VERSION }}';
             const bumpType = '${{ steps.version-type.outputs.type }}';
             
-            const message = `## 🔄 Version Already Bumped
+            const message = `## 🔄 Release Notes Updated
             
-            **Current Version**: ${newVersion}
+            **Current Version**: ${currentVersion}
             **Bump Type**: ${bumpType}
             
-            The version files already contain version ${newVersion}, so no version bump was performed.
+            The version files already contain version ${currentVersion}, so no version bump was performed.
+            However, the release notes have been updated with new commits from this PR.
             
             This happens when:
             - The version was already bumped in a previous commit to this PR
             - New commits were added after the version bump
             
             The PR is ready for review and merge. Once merged, the master workflow will:
-            - Create a Git tag (v${newVersion})
-            - Create a GitHub release
+            - Create a Git tag (v${currentVersion})
+            - Create a GitHub release with the updated release notes
             - Publish to Chrome Web Store
             
             ---
             
-            *Version bump skipped because version ${newVersion} is already applied.*`;
+            *Release notes updated because version ${currentVersion} is already applied.*`;
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -285,32 +271,32 @@ jobs:
             });
 
       - name: Comment on PR
-        if: success() && steps.version-check.outputs.skip_version_bump != 'true'
+        if: success() && steps.release-notes-file.outputs.version_already_bumped != 'true'
         uses: actions/github-script@v7
         with:
           script: |
             const newVersion = '${{ steps.version.outputs.version }}';
             const bumpType = '${{ steps.version-type.outputs.type }}';
             const releaseNotes = `${{ steps.release-notes.outputs.release_notes }}`;
-            
+
             const message = `## 🔄 Version Bumped
-            
+
             **New Version**: ${newVersion}
             **Bump Type**: ${bumpType}
-            
+
             ${releaseNotes}
-            
+
             Version files and release notes have been updated and committed to this PR. This PR is now ready for review and merge.
-            
+
             Once merged, the master workflow will automatically:
             - Create a Git tag (v${newVersion})
             - Create a GitHub release with these release notes
             - Publish to Chrome Web Store
-            
+
             ---
-            
+
             *This version bump was triggered by the \`version-bump\` label.*`;
-            
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
