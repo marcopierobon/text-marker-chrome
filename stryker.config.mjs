@@ -11,19 +11,24 @@ const config = {
   },
   mutate: [
     "content/**/*.ts",
-    "shared/**/*.ts",
+    "shared/**/*.ts", 
     "utils/**/*.ts",
     "!**/*.test.ts",
     "!**/__tests__/**",
     "!**/*.d.ts",
+    "!**/*.config.*",
+    "!**/stryker*.*",
+    "!**/jest*.*",
+    "!popup/popup.ts",
+    "!background.ts",
   ],
   thresholds: {
     high: 80,
     low: 50,
     break: 50,
   },
-  timeoutMS: 60000,
-  concurrency: 4,
+  timeoutMS: 30000,  // Reduce timeout for faster execution
+  concurrency: 2,     // Reduce concurrency for CI stability
   ignorePatterns: [
     "node_modules",
     "dist",

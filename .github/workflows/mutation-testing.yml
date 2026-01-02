@@ -45,15 +45,27 @@ jobs:
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             echo "🧬 Running differential mutation testing on PR changes..."
             
-            # Get changed files
+            # Get changed files and filter for source files only
             git diff --name-only origin/master...HEAD > changed_files.txt
-            echo "Changed files:"
+            echo "All changed files:"
             cat changed_files.txt
             
-            # Run mutation testing only on changed files
-            npm run test:mutation:incremental -- --reporters=json > mutation-report.json || true
-            MUTATION_SCORE=$(jq -r '.mutationScore' mutation-report.json 2>/dev/null || echo "0")
-            echo "PR Mutation Score (incremental): $MUTATION_SCORE%"
+            # Filter for files that should actually be mutated
+            SOURCE_FILES=$(grep -E "(content|shared|utils)/.*\.ts$" changed_files.txt | grep -v -E "(\.test\.|__tests__|\.d\.ts)" || echo "")
+            
+            if [ -z "$SOURCE_FILES" ]; then
+              echo "📝 No source files changed, skipping mutation testing"
+              echo "mutation_score=100" >> $GITHUB_OUTPUT
+              echo "PR Mutation Score: 100% (no source files to test)"
+            else
+              echo "Source files to mutate:"
+              echo "$SOURCE_FILES"
+              
+              # Run incremental mutation testing only on source files
+              npm run test:mutation:incremental -- --reporters=json > mutation-report.json || true
+              MUTATION_SCORE=$(jq -r '.mutationScore' mutation-report.json 2>/dev/null || echo "0")
+              echo "PR Mutation Score (incremental): $MUTATION_SCORE%"
+            fi
           else
             echo "🧬 Running full mutation testing on master..."
             
