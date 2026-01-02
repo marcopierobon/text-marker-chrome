@@ -1,7 +1,7 @@
 // @ts-ignore - Stryker types are not fully compatible with bundler moduleResolution
 const config = {
   packageManager: "npm",
-  reporters: ["html", "clear-text", "progress", "dashboard"],
+  reporters: ["html", "clear-text", "progress"],
   testRunner: "jest",
   coverageAnalysis: "perTest",
   jest: {
@@ -27,8 +27,9 @@ const config = {
     low: 50,
     break: 50,
   },
-  timeoutMS: 30000,  // Reduce timeout for faster execution
-  concurrency: 2,     // Reduce concurrency for CI stability
+  timeoutMS: 15000,  // Reduce timeout for faster execution
+  concurrency: 4,     // Increase concurrency for CI
+  maxConcurrentTestRunners: 4,
   ignorePatterns: [
     "node_modules",
     "dist",
@@ -38,6 +39,8 @@ const config = {
     "background.ts",
     "__tests__/e2e/**",
   ],
+  logLevel: "info",
+  fileLogLevel: "off",
 };
 
 export default config;
