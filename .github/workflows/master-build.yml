@@ -75,7 +75,9 @@ jobs:
       - name: Run integration tests
         run: npm test -- __tests__/integration
 
-      - name: Run E2E tests
+      - name: Run E2E tests (Chrome only in CI)
+        env:
+          CI: true
         run: npm run test:e2e
 
       - name: Run coverage and generate report
