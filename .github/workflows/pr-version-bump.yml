@@ -96,9 +96,9 @@ jobs:
           echo "Checking if version $NEW_VERSION already applied..."
           
           # Read current versions from files
-          PACKAGE_VERSION=$(jq -r '.version' package.json)
-          MANIFEST_VERSION=$(jq -r '.version' manifest.json)
-          FIREFOX_VERSION=$(jq -r '.version' manifest.firefox.json)
+          PACKAGE_VERSION=$(jq -r '.version' package.json 2>/dev/null || echo "null")
+          MANIFEST_VERSION=$(jq -r '.version' manifest.json 2>/dev/null || echo "null")
+          FIREFOX_VERSION=$(jq -r '.version' manifest.firefox.json 2>/dev/null || echo "null")
           
           echo "Current versions:"
           echo "  package.json: $PACKAGE_VERSION"
@@ -110,10 +110,11 @@ jobs:
           if [ "$PACKAGE_VERSION" = "$NEW_VERSION" ] && [ "$MANIFEST_VERSION" = "$NEW_VERSION" ] && [ "$FIREFOX_VERSION" = "$NEW_VERSION" ]; then
             echo "✅ Version $NEW_VERSION already applied, skipping bump"
             echo "skip_version_bump=true" >> $GITHUB_OUTPUT
-            exit 0
+            echo "All version files already contain target version"
           else
             echo "🔄 Version bump needed"
             echo "skip_version_bump=false" >> $GITHUB_OUTPUT
+            echo "Version files need to be updated to $NEW_VERSION"
           fi
 
       - name: Extract commits for release notes
