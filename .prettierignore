@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+dist-firefox/
+coverage/
+reports/
+playwright-report/
+test-results/
+
+# Auto-generated files
+release_notes/
+
+# Stryker
+.stryker-tmp/
