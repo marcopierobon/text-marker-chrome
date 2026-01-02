@@ -83,9 +83,7 @@ jobs:
       - name: Build Firefox extension
         run: npm run build:firefox
 
-      - name: Run E2E tests (Chrome only in CI)
-        env:
-          CI: true
+      - name: Run E2E tests (Chrome and Firefox)
         run: npm run test:e2e
 
       - name: Run coverage and generate report
