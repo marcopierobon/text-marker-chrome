@@ -47,9 +47,12 @@ const config: Config = {
   },
   modulePaths: ["<rootDir>"],
   roots: ["<rootDir>"],
-  resolver: "<rootDir>/jest-ts-resolver.cjs",
+  // resolver: "<rootDir>/jest-ts-resolver.cjs", // Temporarily disabled for Stryker
   testMatch: ["**/__tests__/**/*.test.ts", "**/__tests__/**/*.test.js"],
   testPathIgnorePatterns: ["/node_modules/", "/.stryker-tmp/"],
+  // Ensure test discovery works in sandbox environments
+  forceExit: false,
+  detectOpenHandles: false,
   collectCoverageFrom: [
     "content/**/*.{ts,js}",
     "shared/**/*.{ts,js}",

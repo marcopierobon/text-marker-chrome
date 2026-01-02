@@ -23,6 +23,7 @@
     "test:e2e:firefox": "playwright test --project=firefox",
     "test:e2e:headed": "playwright test --headed",
     "firefox:run": "npm run build:firefox && web-ext run --source-dir=dist-firefox",
+    "package:firefox": "npm run build:firefox && npx web-ext build --source-dir=dist-firefox --artifacts-dir=.",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:failed": "playwright test --last-failed",

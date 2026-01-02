@@ -160,6 +160,13 @@ jobs:
           cd ..
           echo "Created text-marker-firefox-${{ steps.version.outputs.version }}.zip"
 
+      - name: Create Firefox XPI package
+        run: |
+          npm run package:firefox
+          # Rename the generated zip to xpi for clarity
+          mv text_marker-*.zip text-marker-firefox-${{ steps.version.outputs.version }}.xpi
+          echo "Created text-marker-firefox-${{ steps.version.outputs.version }}.xpi"
+
       - name: Create release notes
         id: release-notes
         run: |
@@ -181,11 +188,9 @@ jobs:
           5. Click "Load unpacked" and select the extracted folder
           
           **Firefox:**
-          1. Download `text-marker-firefox-${{ steps.version.outputs.version }}.zip`
-          2. Extract the ZIP file
-          3. Open Firefox and go to `about:debugging#/runtime/this-firefox`
-          4. Click "Load Temporary Add-on"
-          5. Select the manifest.json file from the extracted folder
+          1. Download `text-marker-firefox-${{ steps.version.outputs.version }}.zip` or `text-marker-firefox-${{ steps.version.outputs.version }}.xpi`
+          2. **For ZIP:** Extract and load via `about:debugging#/runtime/this-firefox` → "Load Temporary Add-on"
+          3. **For XPI:** Open Firefox and go to `about:addons` → "Install Add-on From File" → Select the XPI file
           
           ### 📝 Changes
           See commit history for detailed changes.
@@ -209,6 +214,7 @@ jobs:
           files: |
             text-marker-chrome-${{ steps.version.outputs.version }}.zip
             text-marker-firefox-${{ steps.version.outputs.version }}.zip
+            text-marker-firefox-${{ steps.version.outputs.version }}.xpi
           draft: false
           prerelease: false
         env:

@@ -20,7 +20,7 @@ const log = createLogger("ContentScript");
 const CHECK_INTERVAL = 5000; // 5 seconds
 const DEBOUNCE_DELAY = 500; // 500ms
 
-class ContentScript {
+export class ContentScript {
   private detector: SymbolDetector;
   private renderer: BadgeRenderer;
   private configuration: SymbolMarkerConfig;
