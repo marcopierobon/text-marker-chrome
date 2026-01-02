@@ -96,33 +96,41 @@ jobs:
           NEW_VERSION="${{ steps.version.outputs.version }}"
           echo "Checking if version $NEW_VERSION already applied..."
           
-          # Read current versions from files
-          PACKAGE_VERSION=$(jq -r '.version' package.json 2>/dev/null || echo "null")
-          MANIFEST_VERSION=$(jq -r '.version' manifest.json 2>/dev/null || echo "null")
-          FIREFOX_VERSION=$(jq -r '.version' manifest.firefox.json 2>/dev/null || echo "null")
-          
-          echo "Current versions:"
-          echo "  package.json: $PACKAGE_VERSION"
-          echo "  manifest.json: $MANIFEST_VERSION"
-          echo "  manifest.firefox.json: $FIREFOX_VERSION"
-          echo "  Target version: $NEW_VERSION"
-          
-          # Check if all version files already contain the target version
-          if [ "$PACKAGE_VERSION" = "$NEW_VERSION" ] && [ "$MANIFEST_VERSION" = "$NEW_VERSION" ] && [ "$FIREFOX_VERSION" = "$NEW_VERSION" ]; then
+          # First check if release notes file already exists (indicates version was already bumped)
+          RELEASE_NOTES_FILE="release_notes/${NEW_VERSION}.md"
+          if [ -f "$RELEASE_NOTES_FILE" ]; then
+            echo "📝 Found existing release notes file: $RELEASE_NOTES_FILE"
             echo "✅ Version $NEW_VERSION already applied, skipping bump"
             echo "skip_version_bump=true" >> $GITHUB_OUTPUT
-            echo "All version files already contain target version"
+            echo "Version bump skipped because release notes file already exists"
           else
-            echo "🔄 Version bump needed"
-            echo "skip_version_bump=false" >> $GITHUB_OUTPUT
-            echo "Version files need to be updated to $NEW_VERSION"
+            # Read current versions from files
+            PACKAGE_VERSION=$(jq -r '.version' package.json 2>/dev/null || echo "null")
+            MANIFEST_VERSION=$(jq -r '.version' manifest.json 2>/dev/null || echo "null")
+            FIREFOX_VERSION=$(jq -r '.version' manifest.firefox.json 2>/dev/null || echo "null")
+            
+            echo "Current versions:"
+            echo "  package.json: $PACKAGE_VERSION"
+            echo "  manifest.json: $MANIFEST_VERSION"
+            echo "  manifest.firefox.json: $FIREFOX_VERSION"
+            echo "  Target version: $NEW_VERSION"
+            
+            # Check if all version files already contain the target version
+            if [ "$PACKAGE_VERSION" = "$NEW_VERSION" ] && [ "$MANIFEST_VERSION" = "$NEW_VERSION" ] && [ "$FIREFOX_VERSION" = "$NEW_VERSION" ]; then
+              echo "✅ Version $NEW_VERSION already applied, skipping bump"
+              echo "skip_version_bump=true" >> $GITHUB_OUTPUT
+              echo "All version files already contain target version"
+            else
+              echo "🔄 Version bump needed"
+              echo "skip_version_bump=false" >> $GITHUB_OUTPUT
+              echo "Version files need to be updated to $NEW_VERSION"
+            fi
           fi
           
           echo "🔍 Version check step completed"
 
       - name: Extract commits for release notes
         id: release-notes
-        if: steps.version-check.outputs.skip_version_bump != 'true'
         run: |
           NEW_VERSION="${{ steps.version.outputs.version }}"
           echo "Calling extract-release-notes script for version $NEW_VERSION"
@@ -142,6 +150,56 @@ jobs:
           else
             echo "release_notes=No changes in this release" >> $GITHUB_OUTPUT
             echo "ℹ️ No release notes content found"
+          fi
+
+      - name: Update existing release notes if version already bumped
+        if: steps.version-check.outputs.skip_version_bump == 'true'
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.version }}"
+          RELEASE_NOTES_FILE="release_notes/${NEW_VERSION}.md"
+          
+          echo "📝 Updating existing release notes file: $RELEASE_NOTES_FILE"
+          
+          # Call the shell script to get updated release notes
+          ./scripts/extract-release-notes.sh "$NEW_VERSION" > updated-release-notes.txt 2>&1 || {
+            echo "❌ Script execution failed"
+            cat updated-release-notes.txt
+            exit 1
+          }
+          
+          # Update the existing release notes file with new commits
+          if [ -f "$RELEASE_NOTES_FILE" ]; then
+            # Extract the new release notes content
+            if grep -q "release_notes=" updated-release-notes.txt; then
+              NEW_RELEASE_NOTES=$(grep "release_notes=" updated-release-notes.txt | cut -d'=' -f2-)
+              
+              # Create updated release notes content
+              {
+                echo "# Release v${NEW_VERSION}"
+                echo "## 📝 Changes"
+                echo "$NEW_RELEASE_NOTES"
+                echo ""
+                echo "---"
+                echo "*This release was automatically generated from PR #${{ github.event.pull_request.number }}*"
+                echo "*Release notes updated with new commits*"
+              } > "$RELEASE_NOTES_FILE"
+              
+              echo "✅ Updated existing release notes with new commits"
+              
+              # Commit the updated release notes
+              git config user.name "github-actions[bot]"
+              git config user.email "github-actions[bot]@users.noreply.github.com"
+              
+              git add "$RELEASE_NOTES_FILE"
+              git commit -m "docs: update release notes for v${NEW_VERSION} with new commits"
+              git push origin HEAD:${{ github.event.pull_request.head.ref }}
+              
+              echo "✅ Updated release notes committed and pushed"
+            else
+              echo "ℹ️ No new release notes content to update"
+            fi
+          else
+            echo "⚠️ Release notes file not found: $RELEASE_NOTES_FILE"
           fi
 
       - name: Update version files
