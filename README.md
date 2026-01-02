@@ -709,8 +709,8 @@ npm run build:chrome
 # Firefox-specific build
 npm run build:firefox
 
-# Output: dist-firefox/ folder
-# Load: about:debugging → "This Firefox" → "Load Temporary Add-on" → select dist-firefox/manifest.firefox.json
+# Output: dist/firefox/ folder
+# Load: about:debugging → "This Firefox" → "Load Temporary Add-on" → select dist/firefox/manifest.json
 ```
 
 **Key Differences**:
