@@ -7,9 +7,6 @@ dist/firefox/
 dist-firefox/
 dist/
 
-# Release notes (generated during PR process)
-release_notes/
-
 # Test coverage
 coverage/
 playwright-report/
