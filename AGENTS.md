@@ -1,5 +1,7 @@
 ## Modus operandi
 
+THIS IS MANDATORY - ALL WORK MUST FOLLOW THIS EXACT WORKFLOW. NO EXCEPTIONS.
+
 ### Steps
 
 For every request made, the agent should:

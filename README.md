@@ -2,6 +2,16 @@
 
 A powerful Chrome extension that detects and highlights custom text patterns on web pages with visual badges and interactive tooltips.
 
+## 📋 Table of Contents
+
+- [📖 Overview](#-overview)
+- [🚀 Usage](#-usage)
+- [🛠️ Development](#️-development)
+- [🔄 CI/CD](#-cicd)
+- [🚀 Automated Chrome Web Store Publishing](#-automated-chrome-web-store-publishing)
+- [📄 License](#-license)
+- [🔗 Links](#-links)
+
 ---
 
 <details><summary><h2>📖 Overview</h2></summary>
@@ -44,12 +54,26 @@ Text Marker is a versatile Chrome extension that helps you visually identify and
 
 ### Installation
 
+#### 🏪 From Chrome Web Store (Recommended)
+
+1. Visit the [Chrome Web Store](https://chrome.google.com/webstore/detail/text-marker-chrome-extension/your-extension-id)
+2. Click **"Add to Chrome"**
+3. Grant permissions when prompted
+4. The extension icon will appear in your toolbar
+
+#### 🔧 Development Version
+
 1. Download or clone this repository
 2. Open Chrome and navigate to `chrome://extensions/`
 3. Enable **Developer mode** (toggle in top right)
 4. Click **"Load unpacked"**
 5. Select the `dist` folder from this project
 6. The extension icon will appear in your toolbar
+
+#### 📦 Updates
+
+- **Chrome Web Store**: Updates happen automatically
+- **Development**: Pull latest changes and rebuild
 
 ### Getting Started
 
@@ -339,17 +363,60 @@ We welcome contributions from the community! Here's how you can help improve Tex
    npm run format:check
    ```
 
-4. **Run Pre-commit Checks**
-   ```bash
-   ./pre-commit-check.sh
-   ```
-   This runs:
-   - Code formatting (Prettier)
-   - Type checking (TypeScript)
-   - Unit tests (Jest)
-   - Integration tests
-   - E2E tests (Playwright)
-   - Coverage checks
+4. **Create Pull Request**
+   - Push your branch to GitHub
+   - Add labels to specify version bump:
+     - `version-bump` (required) - Triggers version update
+     - `patch` (default) - Bump patch version (1.0.0 → 1.0.1)
+     - `minor` - Bump minor version (1.0.0 → 1.1.0)
+     - `major` - Bump major version (1.0.0 → 2.0.0)
+
+5. **Automated Version Bump**
+   - When you add `version-bump` label, the workflow will:
+     - Calculate new version based on labels
+     - Update `package.json` and manifest files
+     - Run tests
+     - Commit version changes to your PR
+     - Comment with version details
+
+6. **Review and Merge**
+   - Review the PR (version files already updated)
+   - Merge when ready
+
+7. **Automatic Release**
+   - Master workflow automatically:
+     - Creates Git tag
+     - Creates GitHub release
+     - Publishes to Chrome Web Store
+     - Uploads release artifacts
+
+---
+
+## 🔄 CI/CD
+
+### 🔄 Complete CI/CD Flow
+
+```
+Feature Branch → PR with version-bump label → Auto version update → 
+Review & Merge → Master build → Tag creation → Chrome Store publish → Release
+```
+
+### 📋 Quick Release Example
+
+```bash
+# 1. Make changes
+git checkout -b feature/new-feature
+# ... make changes ...
+git add .
+git commit -m "feat: add new feature"
+git push origin feature/new-feature
+
+# 2. On GitHub: Add labels "version-bump, minor"
+
+# 3. Wait for version bump workflow to update files
+# 4. Review and merge PR
+# 5. Automatic release happens
+```
 
 ### Contribution Guidelines
 
@@ -882,7 +949,69 @@ ISC
 
 - [GitHub Repository](https://github.com/marcopierobon/text-marker-chrome)
 - [Report Issues](https://github.com/marcopierobon/text-marker-chrome/issues)
-- [Chrome Web Store](#) _(Coming soon)_
+- [Chrome Web Store](https://chrome.google.com/webstore/detail/text-marker-chrome-extension/your-extension-id) _(Automated Publishing)_
+
+---
+
+## 🚀 Automated Chrome Web Store Publishing
+
+This extension features **fully automated publishing** to the Chrome Web Store:
+
+### 🔄 How It Works
+
+1. **PR-Based Version Bump**: Add `version-bump` label to your PR
+2. **Automatic Version Update**: Workflow updates all version files
+3. **Merge & Release**: Master workflow handles everything automatically
+4. **Chrome Store Publish**: Extension is published without manual intervention
+
+### 📋 Release Process
+
+```bash
+# 1. Create PR with changes
+git checkout -b feature/new-feature
+# ... make changes ...
+git push origin feature/new-feature
+
+# 2. Add labels on GitHub: "version-bump, minor"
+
+# 3. Workflow automatically:
+#    - Updates version files
+#    - Runs tests
+#    - Commits to PR
+#    - Comments with details
+
+# 4. Review and merge PR
+
+# 5. Master workflow automatically:
+#    - Creates Git tag
+#    - Creates GitHub release
+#    - Publishes to Chrome Web Store
+#    - Uploads artifacts
+```
+
+### 🏷️ Version Labels
+
+| Labels | Version Bump | Example |
+|--------|--------------|---------|
+| `version-bump` | Patch | 1.0.0 → 1.0.1 |
+| `version-bump` + `minor` | Minor | 1.0.0 → 1.1.0 |
+| `version-bump` + `major` | Major | 1.0.0 → 2.0.0 |
+
+### 📦 What Gets Published
+
+- **Chrome Extension**: Automatic upload to Chrome Web Store
+- **GitHub Release**: Includes ZIP files for manual installation
+- **Firefox Extension**: Built and available as release artifacts
+- **Version Tags**: Semantic versioning with Git tags
+
+### 🛠️ Technical Details
+
+- **CI/CD Pipeline**: GitHub Actions workflows
+- **Version Management**: Automated semantic versioning
+- **Testing**: Full test suite before publishing
+- **Rollback**: Previous versions available in Chrome Web Store
+
+For detailed setup instructions, see [VERSION_PROCESS.md](VERSION_PROCESS.md).
 
 ---
 
