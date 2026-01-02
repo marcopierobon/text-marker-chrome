@@ -171,7 +171,7 @@ EOF
 fi
 `;
 
-      const scriptPath = join(scriptsDir, "extract-release-notes.sh");
+      const scriptPath = join(testDir, "extract-release-notes.sh");
       writeFileSync(scriptPath, workflowScript);
       execSync(`chmod +x ${scriptPath}`);
 
@@ -191,6 +191,105 @@ fi
       if (existsSync(releaseNotesPath)) {
         execSync(`rm ${releaseNotesPath}`);
       }
+    });
+
+    it("should extract real commits from git repository", () => {
+      const testRepoDir = join(__dirname, "../../temp-release-notes-repo");
+
+      // Clean up any existing test repo
+      if (existsSync(testRepoDir)) {
+        execSync(`rm -rf ${testRepoDir}`);
+      }
+      mkdirSync(testRepoDir, { recursive: true });
+
+      // Initialize a real git repository
+      execSync(`cd ${testRepoDir} && git init`, { shell: "/bin/bash" });
+      execSync(`cd ${testRepoDir} && git config user.name "Test User"`, {
+        shell: "/bin/bash",
+      });
+      execSync(
+        `cd ${testRepoDir} && git config user.email "test@example.com"`,
+        { shell: "/bin/bash" },
+      );
+
+      // Create a master branch with initial commit
+      execSync(`cd ${testRepoDir} && git checkout -b master`, {
+        shell: "/bin/bash",
+      });
+      execSync(`cd ${testRepoDir} && echo "initial content" > test.txt`, {
+        shell: "/bin/bash",
+      });
+      execSync(`cd ${testRepoDir} && git add test.txt`, { shell: "/bin/bash" });
+      execSync(`cd ${testRepoDir} && git commit -m "chore: initial setup"`, {
+        shell: "/bin/bash",
+      });
+
+      // Add origin remote (simulating GitHub Actions environment)
+      execSync(`cd ${testRepoDir} && git remote add origin ${testRepoDir}`, {
+        shell: "/bin/bash",
+      });
+
+      // Create a feature branch with commits
+      execSync(`cd ${testRepoDir} && git checkout -b feature-branch`, {
+        shell: "/bin/bash",
+      });
+      execSync(`cd ${testRepoDir} && echo "feature content" > feature.txt`, {
+        shell: "/bin/bash",
+      });
+      execSync(`cd ${testRepoDir} && git add feature.txt`, {
+        shell: "/bin/bash",
+      });
+      execSync(`cd ${testRepoDir} && git commit -m "feat: add new feature"`, {
+        shell: "/bin/bash",
+      });
+
+      execSync(`cd ${testRepoDir} && echo "fix content" > fix.txt`, {
+        shell: "/bin/bash",
+      });
+      execSync(`cd ${testRepoDir} && git add fix.txt`, { shell: "/bin/bash" });
+      execSync(`cd ${testRepoDir} && git commit -m "fix: resolve bug"`, {
+        shell: "/bin/bash",
+      });
+
+      execSync(`cd ${testRepoDir} && echo "docs content" > docs.txt`, {
+        shell: "/bin/bash",
+      });
+      execSync(`cd ${testRepoDir} && git add docs.txt`, { shell: "/bin/bash" });
+      execSync(`cd ${testRepoDir} && git commit -m "docs: update README"`, {
+        shell: "/bin/bash",
+      });
+
+      // Fetch origin to simulate GitHub Actions environment
+      execSync(`cd ${testRepoDir} && git fetch origin`, { shell: "/bin/bash" });
+
+      // Copy the real script to test directory
+      const realScriptPath = join(
+        __dirname,
+        "../../scripts/extract-release-notes.sh",
+      );
+      const testScriptPath = join(testRepoDir, "extract-release-notes.sh");
+      execSync(`cp ${realScriptPath} ${testScriptPath}`);
+      execSync(`chmod +x ${testScriptPath}`);
+
+      // Run the real script
+      const result = execSync(`${testScriptPath} 1.1.0`, {
+        encoding: "utf8",
+        cwd: testRepoDir,
+      });
+
+      // Verify it extracted the real commits
+      expect(result).toContain("Found commits:");
+      expect(result).toContain("feat: add new feature");
+      expect(result).toContain("fix: resolve bug");
+      expect(result).toContain("docs: update README");
+      expect(result).toContain("release_notes=## 📝 Changes");
+
+      // Verify the script extracted commits (not the exact format)
+      expect(result).toContain("release_notes=");
+      expect(result).not.toContain("No changes in this release");
+
+      // Clean up
+      execSync(`rm -rf ${testRepoDir}`);
     });
   });
 });
