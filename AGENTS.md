@@ -1,4 +1,4 @@
-Stop thinking "I know what they want right now" and start thinking "What does AGENTS.md say I must do first?"
+Stop thinking "I know what they want right now" and start thinking "What does the `Modus operandi` section of AGENTS.md say I must do first? I must follow it all costs and start every answer by stating how I am following it."
 
 ## Modus operandi
 
@@ -6,6 +6,7 @@ THIS IS MANDATORY - ALL WORK MUST FOLLOW THIS EXACT WORKFLOW.
 
 - CHANGES ONLY IN md, yml or yaml files? => Look at the `NO CODE CHANGES` section.
 - OTHER CHANGES? => Look at the `CODE CHANGES` section.
+- IN ALL CASES, FOLLOW the `Additional requests` section.
 
 NO EXCEPTIONS UNLESS THE CHANGE IS ONLY IN md, yml or yaml files.
 
