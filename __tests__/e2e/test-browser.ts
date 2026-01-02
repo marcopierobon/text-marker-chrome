@@ -261,8 +261,14 @@ async function launchFirefox(
   return {
     context,
     serviceWorker: undefined, // Firefox RDP doesn't provide service worker access
-    cleanup: () => {
-      rdpClient.disconnect();
+    cleanup: async () => {
+      try {
+        if (rdpClient) {
+          rdpClient.disconnect();
+        }
+      } catch (error) {
+        console.log("[Firefox] RDP disconnect error (safe to ignore):", error);
+      }
     },
   };
 }
@@ -492,5 +498,11 @@ export async function injectFirefoxContentScript(
     }
   });
 
-  await page.waitForTimeout(500);
+  // Add error handling for the timeout
+  try {
+    await page.waitForTimeout(500);
+  } catch (error) {
+    console.log("[Firefox] Timeout during content script injection (page may be closed):", error);
+    // Don't throw - let the test continue with whatever state we have
+  }
 }

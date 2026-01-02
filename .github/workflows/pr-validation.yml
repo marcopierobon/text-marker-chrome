@@ -84,6 +84,8 @@ jobs:
         run: npm run build:firefox
 
       - name: Run E2E tests (Chrome and Firefox)
+        env:
+          NODE_OPTIONS: "--max-old-space-size=4096"  # Increase memory for Firefox tests
         run: npm run test:e2e
 
       - name: Run coverage and generate report
