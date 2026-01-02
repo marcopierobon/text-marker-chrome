@@ -1,10 +1,16 @@
 {
   "manifest_version": 3,
   "name": "Text Marker",
-  "version": "1.0",
+  "version": "1.4.0",
   "description": "Highlights text patterns on web pages with customizable badges and tooltips",
-  "permissions": ["storage", "activeTab", "scripting"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "optional_permissions": [],
   "browser_specific_settings": {
     "gecko": {
@@ -26,20 +32,30 @@
     "extension_pages": "script-src 'self'; object-src 'self'"
   },
   "background": {
-    "scripts": ["background.js"]
+    "scripts": [
+      "background.js"
+    ]
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content/content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content/content.js"
+      ],
       "run_at": "document_end",
       "all_frames": false
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["icon.png"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "icon.png"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }
