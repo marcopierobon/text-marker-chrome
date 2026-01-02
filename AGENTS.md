@@ -1,9 +1,11 @@
 Stop thinking "I know what they want right now" and start thinking "What does the `Modus operandi` section of AGENTS.md say I must do first? I must follow it all costs and start every answer by stating how I am following it."
 
 ## 🚫 CRITICAL: NO GIT OPERATIONS
+
 **NEVER perform git operations unless explicitly requested by the user.**
+
 - NO `git add`
-- NO `git commit` 
+- NO `git commit`
 - NO `git push`
 - NO `git pull` (unless explicitly asked)
 - NO `git merge` (unless explicitly asked)
