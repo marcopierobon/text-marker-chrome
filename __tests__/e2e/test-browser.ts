@@ -502,7 +502,10 @@ export async function injectFirefoxContentScript(
   try {
     await page.waitForTimeout(500);
   } catch (error) {
-    console.log("[Firefox] Timeout during content script injection (page may be closed):", error);
+    console.log(
+      "[Firefox] Timeout during content script injection (page may be closed):",
+      error,
+    );
     // Don't throw - let the test continue with whatever state we have
   }
 }

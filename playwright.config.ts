@@ -6,7 +6,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : 2, // Keep 1 worker in CI for stability
-  timeout: 60000,  // Increase timeout for Firefox in CI
+  timeout: 60000, // Increase timeout for Firefox in CI
   reporter: [["html", { open: "never" }]],
   use: {
     trace: "on-first-retry",
@@ -17,17 +17,17 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { 
+      use: {
         ...devices["Desktop Chrome"],
-        actionTimeout: 10000,  // 10s for Chrome actions
+        actionTimeout: 10000, // 10s for Chrome actions
         navigationTimeout: 15000, // 15s for Chrome navigation
       },
     },
     {
       name: "firefox",
-      use: { 
+      use: {
         ...devices["Desktop Firefox"],
-        actionTimeout: 20000,  // 20s for Firefox actions (longer for CI)
+        actionTimeout: 20000, // 20s for Firefox actions (longer for CI)
         navigationTimeout: 30000, // 30s for Firefox navigation
       },
     },
