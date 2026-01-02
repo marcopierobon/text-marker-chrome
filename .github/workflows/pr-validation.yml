@@ -76,7 +76,7 @@ jobs:
       - name: Run type checking
         run: npm run type-check
 
-      - name: Build extension
+      - name: Build extension (Chrome and Firefox)
         run: npm run build
 
       - name: Run unit tests
@@ -84,12 +84,6 @@ jobs:
 
       - name: Run integration tests
         run: npm test -- __tests__/integration
-
-      - name: Build Chrome extension
-        run: npm run build
-
-      - name: Build Firefox extension
-        run: npm run build:firefox
 
       - name: Run E2E tests (Chrome and Firefox)
         env:

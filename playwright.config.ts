@@ -7,7 +7,11 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : 2, // Keep 1 worker in CI for stability
   timeout: 60000, // Increase timeout for Firefox in CI
-  reporter: [["html", { open: "never" }]],
+  reporter: [
+    ["html", { open: "never" }],
+    ["line"],           // Show detailed test progress in console
+    ["list"],           // Show test list with status
+  ],
   use: {
     trace: "on-first-retry",
     actionTimeout: 10000, // Increase action timeout
