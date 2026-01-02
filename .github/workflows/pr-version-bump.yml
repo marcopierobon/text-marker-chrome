@@ -106,13 +106,19 @@ jobs:
           
           # Parse the output to extract release notes content
           if grep -q "release_notes=" release-notes-output.txt; then
-            RELEASE_NOTES=$(grep "release_notes=" release-notes-output.txt | cut -d'=' -f2-)
-            echo "release_notes=$RELEASE_NOTES" >> $GITHUB_OUTPUT
+            # Extract everything after "release_notes=" including newlines
+            RELEASE_NOTES=$(sed -n '/release_notes=/,$ { s/release_notes=//p }' release-notes-output.txt)
+            echo "release_notes<<EOF" >> $GITHUB_OUTPUT
+            echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
             echo "✅ Release notes extracted successfully"
           else
             echo "release_notes=No changes in this release" >> $GITHUB_OUTPUT
             echo "ℹ️ No release notes content found"
           fi
+          
+          # Clean up temporary file
+          rm -f release-notes-output.txt
 
       - name: Update or create release notes file
         id: release-notes-file
