@@ -11,6 +11,10 @@ on:
 jobs:
   mutation-test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
     
     steps:
       - name: Checkout code
@@ -25,23 +29,23 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+            npm ci --only=production
+          fi
 
       - name: Run mutation tests
         id: mutation
         continue-on-error: true
         run: |
-          # Note: Mutation testing is currently disabled in pre-commit-check.sh
-          # due to compatibility issues with dynamic jest.config.ts
-          # This workflow is prepared for when mutation testing is re-enabled
-          
-          # npm run test:mutation --reporters=json > mutation-report.json || true
-          # MUTATION_SCORE=$(jq -r '.mutationScore' mutation-report.json || echo "0")
-          # echo "mutation_score=$MUTATION_SCORE" >> $GITHUB_OUTPUT
-          # echo "Mutation Score: $MUTATION_SCORE%"
-          
-          echo "mutation_score=0" >> $GITHUB_OUTPUT
-          echo "⚠️ Mutation testing is currently disabled"
+          # Run mutation testing with JSON reporter for parsing
+          npm run test:mutation -- --reporters=json > mutation-report.json || true
+          MUTATION_SCORE=$(jq -r '.mutationScore' mutation-report.json 2>/dev/null || echo "0")
+          echo "mutation_score=$MUTATION_SCORE" >> $GITHUB_OUTPUT
+          echo "Mutation Score: $MUTATION_SCORE%"
 
       - name: Download master mutation score
         id: master-mutation
@@ -106,19 +110,13 @@ jobs:
             const masterScore = '${{ steps.master-mutation.outputs.master_mutation_score }}';
             
             let message = `## 🧬 Mutation Testing Report\n\n`;
+            message += `- **PR Mutation Score:** ${prScore}%\n`;
             
-            if (prScore === '0') {
-              message += `⚠️ Mutation testing is currently disabled due to compatibility issues.\n`;
-              message += `This will be re-enabled once the jest.config.ts compatibility issue is resolved.\n`;
-            } else {
-              message += `- **PR Mutation Score:** ${prScore}%\n`;
-              
-              if (masterScore !== '0') {
-                message += `- **Master Mutation Score:** ${masterScore}%\n`;
-                const diff = (parseFloat(prScore) - parseFloat(masterScore)).toFixed(2);
-                const emoji = diff >= 0 ? '✅' : '❌';
-                message += `- **Change:** ${emoji} ${diff > 0 ? '+' : ''}${diff}%\n`;
-              }
+            if (masterScore !== '0') {
+              message += `- **Master Mutation Score:** ${masterScore}%\n`;
+              const diff = (parseFloat(prScore) - parseFloat(masterScore)).toFixed(2);
+              const emoji = diff >= 0 ? '✅' : '❌';
+              message += `- **Change:** ${emoji} ${diff > 0 ? '+' : ''}${diff}%\n`;
             }
             
             github.rest.issues.createComment({

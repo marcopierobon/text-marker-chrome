@@ -90,16 +90,14 @@ describe("ContentScript - Empty Categories Bug Reproduction", () => {
       groups: [
         {
           name: "EMPTY GROUP",
-          iconUrl:
-            "https://static.example.com/empty-icon.png",
+          iconUrl: "https://static.example.com/empty-icon.png",
           color: "#000000",
           url: "empty.com",
           categories: {},
         },
         {
           name: "ETORO",
-          iconUrl:
-            "https://static.example.com/etoro-icon.png",
+          iconUrl: "https://static.example.com/etoro-icon.png",
           color: "#0a74da",
           url: "etoro.com",
           categories: {
