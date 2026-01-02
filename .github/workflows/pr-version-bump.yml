@@ -9,7 +9,7 @@ on:
 jobs:
   version-bump:
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'version-bump')
+    if: contains(join(github.event.pull_request.labels.*.name, ','), 'version-bump')
     
     steps:
       - name: Debug PR information
@@ -43,9 +43,12 @@ jobs:
       - name: Determine version bump type
         id: version-type
         run: |
-          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'major') }}" == "true" ]]; then
+          LABELS="${{ join(github.event.pull_request.labels.*.name, ',') }}"
+          echo "All labels: $LABELS"
+          
+          if [[ "$LABELS" == *"major"* ]] || [[ "$LABELS" == *"version-bump: major"* ]]; then
             echo "type=major" >> $GITHUB_OUTPUT
-          elif [[ "${{ contains(github.event.pull_request.labels.*.name, 'minor') }}" == "true" ]]; then
+          elif [[ "$LABELS" == *"minor"* ]] || [[ "$LABELS" == *"version-bump: minor"* ]]; then
             echo "type=minor" >> $GITHUB_OUTPUT
           else
             echo "type=patch" >> $GITHUB_OUTPUT
@@ -104,7 +107,7 @@ jobs:
             # Create release notes directory
             mkdir -p release_notes
             
-            # Generate release notes content
+            # Generate release notes content with proper here-document syntax
             cat > "release_notes/${NEW_VERSION}.md" << EOF
             # Release v${NEW_VERSION}
             
