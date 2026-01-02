@@ -2,20 +2,35 @@ name: PR Version Bump
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, labeled]
     branches: [main, master]
+  workflow_dispatch:  # Allow manual triggering for testing
 
 jobs:
   version-bump:
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'version-bump')
+    if: contains(join(github.event.pull_request.labels.*.name, ','), 'version-bump')
     
     steps:
+      - name: Debug PR information
+        run: |
+          echo "🔍 Debugging PR information..."
+          echo "Event name: ${{ github.event_name }}"
+          echo "PR number: ${{ github.event.pull_request.number }}"
+          echo "PR state: ${{ github.event.pull_request.state }}"
+          echo "Base branch: ${{ github.event.pull_request.base.ref }}"
+          echo "Head branch: ${{ github.event.pull_request.head.ref }}"
+          echo "All labels:"
+          echo "${{ github.event.pull_request.labels.*.name }}" | tr ' ' '\n'
+          echo "Has version-bump label: ${{ contains(github.event.pull_request.labels.*.name, 'version-bump') }}"
+          echo "Has minor label: ${{ contains(github.event.pull_request.labels.*.name, 'minor') }}"
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0  # Get full history for proper version comparison
+          fetch-tags: true  # Fetch all tags
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -29,9 +44,12 @@ jobs:
       - name: Determine version bump type
         id: version-type
         run: |
-          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'major') }}" == "true" ]]; then
+          LABELS="${{ join(github.event.pull_request.labels.*.name, ',') }}"
+          echo "All labels: $LABELS"
+          
+          if [[ "$LABELS" == *"major"* ]] || [[ "$LABELS" == *"version-bump: major"* ]]; then
             echo "type=major" >> $GITHUB_OUTPUT
-          elif [[ "${{ contains(github.event.pull_request.labels.*.name, 'minor') }}" == "true" ]]; then
+          elif [[ "$LABELS" == *"minor"* ]] || [[ "$LABELS" == *"version-bump: minor"* ]]; then
             echo "type=minor" >> $GITHUB_OUTPUT
           else
             echo "type=patch" >> $GITHUB_OUTPUT
@@ -71,6 +89,29 @@ jobs:
           echo "New version: $NEW_VERSION"
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
+      - name: Extract commits for release notes
+        id: release-notes
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.version }}"
+          echo "Calling extract-release-notes script for version $NEW_VERSION"
+          
+          # Call the shell script to extract commits and generate release notes
+          ./scripts/extract-release-notes.sh "$NEW_VERSION" > release-notes-output.txt 2>&1 || {
+            echo "❌ Script execution failed"
+            cat release-notes-output.txt
+            exit 1
+          }
+          
+          # Parse the output to extract release notes content
+          if grep -q "release_notes=" release-notes-output.txt; then
+            RELEASE_NOTES=$(grep "release_notes=" release-notes-output.txt | cut -d'=' -f2-)
+            echo "release_notes=$RELEASE_NOTES" >> $GITHUB_OUTPUT
+            echo "✅ Release notes extracted successfully"
+          else
+            echo "release_notes=No changes in this release" >> $GITHUB_OUTPUT
+            echo "ℹ️ No release notes content found"
+          fi
+
       - name: Update version files
         run: |
           NEW_VERSION="${{ steps.version.outputs.version }}"
@@ -100,12 +141,20 @@ jobs:
             exit 1
           fi
           
+          # Add version files and release notes
           git add package.json manifest.json manifest.firefox.json
+          
+          # Add release notes if they exist
+          if [ -d "release_notes" ]; then
+            git add release_notes/
+            echo "📝 Added release notes"
+          fi
+          
           git commit -m "chore: bump version to ${{ steps.version.outputs.version }}"
           
           # Push to the PR branch
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
-          echo "✅ Version bump committed and pushed to PR branch"
+          echo "✅ Version bump and release notes committed and pushed to PR branch"
 
       - name: Comment on PR
         if: success()
@@ -114,17 +163,20 @@ jobs:
           script: |
             const newVersion = '${{ steps.version.outputs.version }}';
             const bumpType = '${{ steps.version-type.outputs.type }}';
+            const releaseNotes = `${{ steps.release-notes.outputs.release_notes }}`;
             
             const message = `## 🔄 Version Bumped
             
             **New Version**: ${newVersion}
             **Bump Type**: ${bumpType}
             
-            Version files have been updated and committed to this PR. This PR is now ready for review and merge.
+            ${releaseNotes}
+            
+            Version files and release notes have been updated and committed to this PR. This PR is now ready for review and merge.
             
             Once merged, the master workflow will automatically:
             - Create a Git tag (v${newVersion})
-            - Create a GitHub release
+            - Create a GitHub release with these release notes
             - Publish to Chrome Web Store
             
             ---
