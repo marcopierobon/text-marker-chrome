@@ -1,6 +1,15 @@
+Stop thinking "I know what they want right now" and start thinking "What does AGENTS.md say I must do first?"
+
 ## Modus operandi
 
-### Steps
+THIS IS MANDATORY - ALL WORK MUST FOLLOW THIS EXACT WORKFLOW.
+
+- CHANGES ONLY IN md, yml or yaml files? => Look at the `NO CODE CHANGES` section.
+- OTHER CHANGES? => Look at the `CODE CHANGES` section.
+
+NO EXCEPTIONS UNLESS THE CHANGE IS ONLY IN md, yml or yaml files.
+
+### CODE CHANGES
 
 For every request made, the agent should:
 
@@ -16,6 +25,18 @@ Check the status of the pending buy and sell, and update the initial message in 
 2. Then implement the logic checking the pending order statuses and updating the initial message in discord.
 3. Then confirm the new tests are passing.
 4. Then run `npm run precommit`.
+
+### NOCODE CHANGES
+
+For every request made, the agent should:
+
+1. Then implement the logic.
+2. Then run `npm run precommit`.
+
+E.g. I want the pipeline to record the coverage
+
+1. implement the logic.
+2. Then run `npm run precommit`.
 
 ### Additional requests
 
