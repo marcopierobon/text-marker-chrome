@@ -1,10 +1,9 @@
 #!/bin/bash
-NEW_VERSION="1.1.0"
+NEW_VERSION="$1"
 echo "Extracting commits for version $NEW_VERSION"
 
-# Mock git log for testing
-COMMITS="feat: add new feature
-fix: resolve bug"
+# Get commits that are in current branch but not in master
+COMMITS=$(git log origin/master..HEAD --oneline --no-merges | sed 's/^[a-f0-9]\+ //')
 
 if [ -z "$COMMITS" ]; then
   echo "No new commits found"
