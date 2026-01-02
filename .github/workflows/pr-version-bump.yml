@@ -89,8 +89,36 @@ jobs:
           echo "New version: $NEW_VERSION"
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
+      - name: Check if version already bumped
+        id: version-check
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.version }}"
+          echo "Checking if version $NEW_VERSION already applied..."
+          
+          # Read current versions from files
+          PACKAGE_VERSION=$(jq -r '.version' package.json)
+          MANIFEST_VERSION=$(jq -r '.version' manifest.json)
+          FIREFOX_VERSION=$(jq -r '.version' manifest.firefox.json)
+          
+          echo "Current versions:"
+          echo "  package.json: $PACKAGE_VERSION"
+          echo "  manifest.json: $MANIFEST_VERSION"
+          echo "  manifest.firefox.json: $FIREFOX_VERSION"
+          echo "  Target version: $NEW_VERSION"
+          
+          # Check if all version files already contain the target version
+          if [ "$PACKAGE_VERSION" = "$NEW_VERSION" ] && [ "$MANIFEST_VERSION" = "$NEW_VERSION" ] && [ "$FIREFOX_VERSION" = "$NEW_VERSION" ]; then
+            echo "✅ Version $NEW_VERSION already applied, skipping bump"
+            echo "skip_version_bump=true" >> $GITHUB_OUTPUT
+            exit 0
+          else
+            echo "🔄 Version bump needed"
+            echo "skip_version_bump=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Extract commits for release notes
         id: release-notes
+        if: steps.version-check.outputs.skip_version_bump != 'true'
         run: |
           NEW_VERSION="${{ steps.version.outputs.version }}"
           echo "Calling extract-release-notes script for version $NEW_VERSION"
@@ -113,6 +141,7 @@ jobs:
           fi
 
       - name: Update version files
+        if: steps.version-check.outputs.skip_version_bump != 'true'
         run: |
           NEW_VERSION="${{ steps.version.outputs.version }}"
           
@@ -128,9 +157,11 @@ jobs:
           echo "✅ Updated all version files to $NEW_VERSION"
 
       - name: Run tests
+        if: steps.version-check.outputs.skip_version_bump != 'true'
         run: npm test
 
       - name: Commit version bump
+        if: steps.version-check.outputs.skip_version_bump != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -156,8 +187,43 @@ jobs:
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
           echo "✅ Version bump and release notes committed and pushed to PR branch"
 
+      - name: Comment on PR when version bump skipped
+        if: steps.version-check.outputs.skip_version_bump == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const newVersion = '${{ steps.version.outputs.version }}';
+            const bumpType = '${{ steps.version-type.outputs.type }}';
+            
+            const message = `## 🔄 Version Already Bumped
+            
+            **Current Version**: ${newVersion}
+            **Bump Type**: ${bumpType}
+            
+            The version files already contain version ${newVersion}, so no version bump was performed.
+            
+            This happens when:
+            - The version was already bumped in a previous commit to this PR
+            - New commits were added after the version bump
+            
+            The PR is ready for review and merge. Once merged, the master workflow will:
+            - Create a Git tag (v${newVersion})
+            - Create a GitHub release
+            - Publish to Chrome Web Store
+            
+            ---
+            
+            *Version bump skipped because version ${newVersion} is already applied.*`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
+
       - name: Comment on PR
-        if: success()
+        if: success() && steps.version-check.outputs.skip_version_bump != 'true'
         uses: actions/github-script@v7
         with:
           script: |
