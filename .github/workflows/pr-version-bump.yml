@@ -107,7 +107,10 @@ jobs:
           # Parse the output to extract release notes content
           if grep -q "release_notes=" release-notes-output.txt; then
             # Extract everything after "release_notes=" including newlines
-            RELEASE_NOTES=$(sed -n '/release_notes=/,$ { s/release_notes=//p }' release-notes-output.txt)
+            # First, get the line number where "release_notes=" appears
+            LINE_NUM=$(grep -n "release_notes=" release-notes-output.txt | cut -d: -f1)
+            # Then extract from that line onwards, removing the "release_notes=" prefix from first line
+            RELEASE_NOTES=$(tail -n +${LINE_NUM} release-notes-output.txt | sed '1s/^release_notes=//')
             echo "release_notes<<EOF" >> $GITHUB_OUTPUT
             echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
