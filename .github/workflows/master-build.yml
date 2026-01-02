@@ -181,9 +181,9 @@ jobs:
 
       - name: Create Firefox ZIP archive
         run: |
-          cd dist-firefox
-          zip -r ../text-marker-firefox-${{ steps.version.outputs.version }}.zip .
-          cd ..
+          cd dist/firefox
+          zip -r ../../text-marker-firefox-${{ steps.version.outputs.version }}.zip .
+          cd ../..
           echo "Created text-marker-firefox-${{ steps.version.outputs.version }}.zip"
 
       - name: Create Firefox XPI package
@@ -257,7 +257,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: firefox-dist-v${{ steps.version.outputs.version }}
-          path: dist-firefox/
+          path: dist/firefox/
           retention-days: 90
 
       - name: Commit version updates

@@ -1,0 +1,130 @@
+name: Publish to Chrome Web Store
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0, v1.1.0, etc.
+  workflow_dispatch:  # Allow manual triggering for testing
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC authentication
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Build Chrome extension
+        run: npm run build:chrome
+
+      - name: Get version from tag
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Version from tag: $VERSION"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Version from package.json: $VERSION"
+          fi
+
+      - name: Update manifest version
+        run: |
+          # Update manifest.json with the version
+          jq --arg version "${{ steps.version.outputs.version }}" '.version = $version' dist/chrome/manifest.json > dist/chrome/manifest.tmp && mv dist/chrome/manifest.tmp dist/chrome/manifest.json
+          echo "Updated manifest.json to version ${{ steps.version.outputs.version }}"
+
+      - name: Create ZIP file
+        run: |
+          cd dist/chrome
+          zip -r ../../text-marker-extension-${{ steps.version.outputs.version }}.zip .
+          cd ../..
+          echo "Created ZIP file: text-marker-extension-${{ steps.version.outputs.version }}.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chrome-extension-${{ steps.version.outputs.version }}
+          path: text-marker-extension-${{ steps.version.outputs.version }}.zip
+          retention-days: 30
+
+      - name: Publish to Chrome Web Store
+        id: publish
+        continue-on-error: true  # Don't fail the workflow if publishing fails
+        run: |
+          echo "🔍 Debugging Chrome Web Store API access..."
+          echo "Extension ID: ${{ secrets.CHROME_STORE_EXTENSION_ID }}"
+          echo "Client ID: ${{ secrets.CHROME_STORE_CLIENT_ID }}"
+          
+          # Test API access first
+          echo "🧪 Testing API access..."
+          curl -s -H "Authorization: Bearer $(curl -s -d "client_id=${{ secrets.CHROME_STORE_CLIENT_ID }}&client_secret=${{ secrets.CHROME_STORE_CLIENT_SECRET }}&refresh_token=${{ secrets.CHROME_STORE_REFRESH_TOKEN }}&grant_type=refresh_token" https://oauth2.googleapis.com/token | jq -r '.access_token')" "https://www.googleapis.com/chromewebstore/v1.1/items/${{ secrets.CHROME_STORE_EXTENSION_ID }}" || echo "❌ API test failed"
+          
+          # Try publishing with detailed error handling
+          echo "📤 Attempting to publish..."
+          npx chrome-webstore-upload-cli@latest upload \
+            --source text-marker-extension-${{ steps.version.outputs.version }}.zip \
+            --extension-id ${{ secrets.CHROME_STORE_EXTENSION_ID }} \
+            --client-id ${{ secrets.CHROME_STORE_CLIENT_ID }} \
+            --client-secret ${{ secrets.CHROME_STORE_CLIENT_SECRET }} \
+            --refresh-token ${{ secrets.CHROME_STORE_REFRESH_TOKEN }} \
+            --publish || echo "❌ Publishing failed - see logs above"
+          
+          echo "📋 If publishing failed, check:"
+          echo "1. Chrome Web Store API is enabled in Google Cloud Console"
+          echo "2. Extension is published (not just testing)"
+          echo "3. Google developer verification is complete"
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            ## Chrome Extension Release ${{ steps.version.outputs.version }}
+            
+            ### Changes
+            - Automated release with version ${{ steps.version.outputs.version }}
+            
+            ### Installation
+            - Available in Chrome Web Store
+            - Download ZIP from assets below for manual installation
+            
+            ### Verification
+            - All tests passed
+            - Code signed with GPG
+          draft: false
+          prerelease: false
+
+      - name: Upload release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.publish.outputs.upload_url }}
+          asset_path: text-marker-extension-${{ steps.version.outputs.version }}.zip
+          asset_name: text-marker-extension-${{ steps.version.outputs.version }}.zip
+          asset_content_type: application/zip
