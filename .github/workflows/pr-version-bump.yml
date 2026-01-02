@@ -156,11 +156,11 @@ jobs:
           echo "✅ Release notes file $RELEASE_NOTES_FILE created/updated"
           
           # Check if this version was already bumped (file exists in master)
-          if git diff --name-only origin/master -- | grep -q "^${RELEASE_NOTES_FILE}$"; then
-            echo "📝 Release notes file was added in this PR branch"
-            echo "version_already_bumped=false" >> $GITHUB_OUTPUT
-          elif git show origin/master:"$RELEASE_NOTES_FILE" >/dev/null 2>&1; then
+          if git show origin/master:"$RELEASE_NOTES_FILE" >/dev/null 2>&1; then
             echo "📝 Release notes file exists in master - version already bumped"
+            echo "version_already_bumped=true" >> $GITHUB_OUTPUT
+          elif git diff --name-only origin/master -- | grep -q "^${RELEASE_NOTES_FILE}$"; then
+            echo "📝 Release notes file was added in this PR branch - version already bumped"
             echo "version_already_bumped=true" >> $GITHUB_OUTPUT
           else
             echo "📝 Release notes file does not exist in master - new version"
