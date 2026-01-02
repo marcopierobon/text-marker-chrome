@@ -21,3 +21,4 @@ Check the status of the pending buy and sell, and update the initial message in 
 
 Do not create .md files to tell me what you did unless I ask you to.
 Do not perform git operations unless I ask you to.
+Do not delete any files unless I ask you to.
