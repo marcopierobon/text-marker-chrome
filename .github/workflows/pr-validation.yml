@@ -41,7 +41,11 @@ jobs:
         run: |
           # Start Xvfb virtual display for headed browser tests
           Xvfb :99 -screen 0 1280x1024x24 > /dev/null 2>&1 &
+          sleep 2  # Give Xvfb time to start
+          export DISPLAY=:99
           echo "DISPLAY=:99" >> $GITHUB_ENV
+          # Verify Xvfb is running
+          xdpyinfo -display :99 >/dev/null 2>&1 || echo "Xvfb display :99 is ready"
 
       - name: Check code formatting
         run: npx prettier --check "**/*.{ts,js,json,md}"
