@@ -1,6 +1,6 @@
 {
   "name": "text-marker-extension",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "type": "module",
   "description": "Chrome extension for text pattern detection and marking with customizable badges and tooltips",
   "main": "background.js",

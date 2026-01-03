@@ -4,7 +4,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, labeled]
     branches: [main, master]
-  workflow_dispatch:  # Allow manual triggering for testing
+  workflow_dispatch:  
 
 jobs:
   version-bump:
@@ -140,15 +140,15 @@ jobs:
           RELEASE_NOTES_FILE="release_notes/${NEW_VERSION}.md"
           echo "Target release notes file: $RELEASE_NOTES_FILE"
           
-          # Check if file exists in master (not in current branch)
+          # Check if this version was already bumped (file exists in master)
+          # This must be done BEFORE creating the file
           if git show origin/master:"$RELEASE_NOTES_FILE" >/dev/null 2>&1; then
-            echo "📝 File $RELEASE_NOTES_FILE exists in master - updating content"
-            UPDATE_FILE=true
-          elif [ -f "$RELEASE_NOTES_FILE" ]; then
-            echo "📝 File $RELEASE_NOTES_FILE exists in current branch - updating content"
+            echo "📝 Release notes file exists in master - version already bumped"
+            echo "version_already_bumped=true" >> $GITHUB_OUTPUT
             UPDATE_FILE=true
           else
-            echo "📝 File $RELEASE_NOTES_FILE does not exist - creating new file"
+            echo "📝 Release notes file does not exist in master - new version"
+            echo "version_already_bumped=false" >> $GITHUB_OUTPUT
             UPDATE_FILE=false
           fi
           
@@ -169,18 +169,6 @@ jobs:
           } > "$RELEASE_NOTES_FILE"
           
           echo "✅ Release notes file $RELEASE_NOTES_FILE created/updated"
-          
-          # Check if this version was already bumped (file exists in master)
-          if git show origin/master:"$RELEASE_NOTES_FILE" >/dev/null 2>&1; then
-            echo "📝 Release notes file exists in master - version already bumped"
-            echo "version_already_bumped=true" >> $GITHUB_OUTPUT
-          elif [ -f "$RELEASE_NOTES_FILE" ]; then
-            echo "📝 Release notes file exists in current branch - version already bumped"
-            echo "version_already_bumped=true" >> $GITHUB_OUTPUT
-          else
-            echo "📝 Release notes file does not exist - new version"
-            echo "version_already_bumped=false" >> $GITHUB_OUTPUT
-          fi
           
           echo "🔍 Release notes file management completed"
 
