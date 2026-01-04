@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Text Marker",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Highlights text patterns on web pages with customizable badges and tooltips",
   "permissions": [
     "storage",
